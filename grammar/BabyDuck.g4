@@ -62,19 +62,20 @@ programBody: MAIN codeBlock END;
 
 identifier: ID;
 parenthesizedExpression: LPAREN expression RPAREN;
-typeDeclaration: COLON type;
 
 // Type Definitions
 type: INT | FLOAT;
 
 // Variable Declarations (VARS)
-varsSection: VAR (ID (COMMA ID)* typeDeclaration SEMICOLON)+;
+idList: ID (COMMA ID)*;
+varDecl: idList COLON type SEMICOLON;
+varsSection: VAR varDecl+;
 
 // Constants (CTE)
 constant: CONST_INT | CONST_FLOAT;
 
 // Function Declarations (FUNCS)
-parameter: identifier typeDeclaration;
+parameter: identifier COLON type;
 functionBody: LBRACKET (varsSection)? codeBlock RBRACKET SEMICOLON;
 functionDeclaration: VOID identifier LPAREN (parameter (COMMA parameter)*)? RPAREN functionBody;
 functionsSection: functionDeclaration;
@@ -97,7 +98,8 @@ conditional: ifBlock (elseBlock)? SEMICOLON;
 loop: WHILE parenthesizedExpression DO codeBlock SEMICOLON;
 
 // Function Call (F_CALL)
-functionCall: identifier LPAREN (expression (COMMA expression)*)? RPAREN SEMICOLON;
+argumentList: expression (COMMA expression)*;
+functionCall: identifier LPAREN (argumentList)? RPAREN SEMICOLON;
 
 // Print Statement (PRINT)
 printable: expression | CONST_STRING;
