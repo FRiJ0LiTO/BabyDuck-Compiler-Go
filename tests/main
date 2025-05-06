@@ -1,7 +1,7 @@
 program BabyDuck;
 
 var
-    globalCounter: int;
+    globalCounter, counter, loopIndex: int;
     totalSum, averageResult, temporaryValue: float;
 
 void processInputs(floatInput: float, intInput: int) [
@@ -29,6 +29,7 @@ void processSecondaryInputs(floatInput: float, intInput: int) [
         sumResult = 0;
         computedFloat = 3.0;
         globalCounter = floatInput + 1;
+        pi = 10;
     }
 ];
 
@@ -39,7 +40,10 @@ main
 
     counter = 1;
 
-    if (counter > 10) {
+    print(totalSum > abc);
+    print(totalSum + 45);
+
+    if (yy > 10) {
         print("counter is 1");
     } else {
         print("counter is not 1");
@@ -47,13 +51,13 @@ main
 
     loopIndex = 2;
 
-    while (loopIndex < 10) do {
+    while (zz < 10) do {
         loopIndex = loopIndex + 1;
         print(loopIndex);
     };
 
 
-    processInputs(1.0, 1);
+    processInputs(1.0, loopIndex);
     processSecondaryInputs(1.0, 1);
 }
 
