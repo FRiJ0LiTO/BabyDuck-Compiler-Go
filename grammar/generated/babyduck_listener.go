@@ -1,6 +1,6 @@
 // Code generated from ./BabyDuck.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package parser // BabyDuck
+package generated // BabyDuck
 
 import "github.com/antlr4-go/antlr/v4"
 
@@ -23,11 +23,14 @@ type BabyDuckListener interface {
 	// EnterParenthesizedExpression is called when entering the parenthesizedExpression production.
 	EnterParenthesizedExpression(c *ParenthesizedExpressionContext)
 
-	// EnterTypeDeclaration is called when entering the typeDeclaration production.
-	EnterTypeDeclaration(c *TypeDeclarationContext)
-
 	// EnterType is called when entering the type production.
 	EnterType(c *TypeContext)
+
+	// EnterIdList is called when entering the idList production.
+	EnterIdList(c *IdListContext)
+
+	// EnterVarDecl is called when entering the varDecl production.
+	EnterVarDecl(c *VarDeclContext)
 
 	// EnterVarsSection is called when entering the varsSection production.
 	EnterVarsSection(c *VarsSectionContext)
@@ -67,6 +70,9 @@ type BabyDuckListener interface {
 
 	// EnterLoop is called when entering the loop production.
 	EnterLoop(c *LoopContext)
+
+	// EnterArgumentList is called when entering the argumentList production.
+	EnterArgumentList(c *ArgumentListContext)
 
 	// EnterFunctionCall is called when entering the functionCall production.
 	EnterFunctionCall(c *FunctionCallContext)
@@ -122,11 +128,14 @@ type BabyDuckListener interface {
 	// ExitParenthesizedExpression is called when exiting the parenthesizedExpression production.
 	ExitParenthesizedExpression(c *ParenthesizedExpressionContext)
 
-	// ExitTypeDeclaration is called when exiting the typeDeclaration production.
-	ExitTypeDeclaration(c *TypeDeclarationContext)
-
 	// ExitType is called when exiting the type production.
 	ExitType(c *TypeContext)
+
+	// ExitIdList is called when exiting the idList production.
+	ExitIdList(c *IdListContext)
+
+	// ExitVarDecl is called when exiting the varDecl production.
+	ExitVarDecl(c *VarDeclContext)
 
 	// ExitVarsSection is called when exiting the varsSection production.
 	ExitVarsSection(c *VarsSectionContext)
@@ -166,6 +175,9 @@ type BabyDuckListener interface {
 
 	// ExitLoop is called when exiting the loop production.
 	ExitLoop(c *LoopContext)
+
+	// ExitArgumentList is called when exiting the argumentList production.
+	ExitArgumentList(c *ArgumentListContext)
 
 	// ExitFunctionCall is called when exiting the functionCall production.
 	ExitFunctionCall(c *FunctionCallContext)

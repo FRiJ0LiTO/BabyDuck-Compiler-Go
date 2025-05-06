@@ -1,6 +1,6 @@
 // Code generated from ./BabyDuck.g4 by ANTLR 4.13.2. DO NOT EDIT.
 
-package parser // BabyDuck
+package generated // BabyDuck
 
 import "github.com/antlr4-go/antlr/v4"
 
@@ -51,17 +51,23 @@ func (s *BaseBabyDuckListener) EnterParenthesizedExpression(ctx *ParenthesizedEx
 // ExitParenthesizedExpression is called when production parenthesizedExpression is exited.
 func (s *BaseBabyDuckListener) ExitParenthesizedExpression(ctx *ParenthesizedExpressionContext) {}
 
-// EnterTypeDeclaration is called when production typeDeclaration is entered.
-func (s *BaseBabyDuckListener) EnterTypeDeclaration(ctx *TypeDeclarationContext) {}
-
-// ExitTypeDeclaration is called when production typeDeclaration is exited.
-func (s *BaseBabyDuckListener) ExitTypeDeclaration(ctx *TypeDeclarationContext) {}
-
 // EnterType is called when production type is entered.
 func (s *BaseBabyDuckListener) EnterType(ctx *TypeContext) {}
 
 // ExitType is called when production type is exited.
 func (s *BaseBabyDuckListener) ExitType(ctx *TypeContext) {}
+
+// EnterIdList is called when production idList is entered.
+func (s *BaseBabyDuckListener) EnterIdList(ctx *IdListContext) {}
+
+// ExitIdList is called when production idList is exited.
+func (s *BaseBabyDuckListener) ExitIdList(ctx *IdListContext) {}
+
+// EnterVarDecl is called when production varDecl is entered.
+func (s *BaseBabyDuckListener) EnterVarDecl(ctx *VarDeclContext) {}
+
+// ExitVarDecl is called when production varDecl is exited.
+func (s *BaseBabyDuckListener) ExitVarDecl(ctx *VarDeclContext) {}
 
 // EnterVarsSection is called when production varsSection is entered.
 func (s *BaseBabyDuckListener) EnterVarsSection(ctx *VarsSectionContext) {}
@@ -140,6 +146,12 @@ func (s *BaseBabyDuckListener) EnterLoop(ctx *LoopContext) {}
 
 // ExitLoop is called when production loop is exited.
 func (s *BaseBabyDuckListener) ExitLoop(ctx *LoopContext) {}
+
+// EnterArgumentList is called when production argumentList is entered.
+func (s *BaseBabyDuckListener) EnterArgumentList(ctx *ArgumentListContext) {}
+
+// ExitArgumentList is called when production argumentList is exited.
+func (s *BaseBabyDuckListener) ExitArgumentList(ctx *ArgumentListContext) {}
 
 // EnterFunctionCall is called when production functionCall is entered.
 func (s *BaseBabyDuckListener) EnterFunctionCall(ctx *FunctionCallContext) {}
