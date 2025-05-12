@@ -24,7 +24,7 @@ type Parser struct {
 //
 // Returns:
 //   *Parser: A pointer to the newly created Parser instance.
-func NewParser(sourceCode string) *Parser {
+func NewParser(sourceCode string, debug bool) *Parser {
  inputStream := antlr.NewInputStream(sourceCode)
  lexer := generated.NewBabyDuckLexer(inputStream)
  tokenStream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
@@ -35,7 +35,7 @@ func NewParser(sourceCode string) *Parser {
   lexer:       lexer,
   tokenStream: tokenStream,
   parser:      parser,
-  builder:     NewDirectoryBuilder(false),
+  builder:     NewDirectoryBuilder(debug),
  }
 }
 
@@ -45,9 +45,9 @@ func NewParser(sourceCode string) *Parser {
 // Returns:
 //   *symbol.FunctionDirectory: The constructed function directory containing symbol tables.
 //   []string: A list of errors encountered during parsing.
-func (p *Parser) Parse() (*symbol.FunctionDirectory, []string) {
+func (p *Parser) Parse() ( generated.IProgramContext, *symbol.FunctionDirectory, []string) {
  parseTree := p.parser.Program()
  antlr.ParseTreeWalkerDefault.Walk(p.builder, parseTree)
 
- return p.builder.Directory, p.builder.Errors
+ return parseTree, p.builder.Directory, p.builder.Errors
 }
