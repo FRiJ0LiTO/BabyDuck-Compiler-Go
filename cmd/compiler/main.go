@@ -37,8 +37,8 @@ func main() {
 	}
 
 	// Parse the source code
-	newParser := parser.NewParser(string(sourceCode))
-	symbolTable, errors := newParser.Parse()
+	newParser := parser.NewParser(string(sourceCode), false)
+	parseTree, symbolTable, errors := newParser.Parse()
 
 	// Test Semantic Cube
 	semanticCube := semantic.NewSemanticCube()
@@ -53,4 +53,8 @@ func main() {
 			fmt.Printf("- %s\n", err)
 		}
 	}
+
+	visitor := semantic.NewVisitor(symbolTable)
+	visitor.Visit(parseTree)
+	visitor.PrintQuadruplesTable()
 }
