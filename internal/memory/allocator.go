@@ -48,10 +48,14 @@ const (
 
 	PRINT
 
+	FUNC
 	PARAM
 	CALL
 
 	ASSIGN
+
+	PROGRAM
+	END
 )
 
 // DefaultMemoryConfig provides the default memory address ranges for all variable types and data types.
@@ -108,12 +112,18 @@ func IdentifyOperator(operator string, isUnary ...bool) Operator {
 		return GOTO
 	case "PRINT":
 		return PRINT
+	case "FUNC":
+		return FUNC
 	case "PARAM":
 		return PARAM
 	case "CALL":
 		return CALL
 	case "=":
 		return ASSIGN
+	case "PROGRAM":
+		return PROGRAM
+	case "END":
+		return END
 	default:
 		return -1
 	}
