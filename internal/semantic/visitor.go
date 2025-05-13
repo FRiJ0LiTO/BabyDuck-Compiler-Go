@@ -21,7 +21,9 @@ type Quadruple struct {
 type Visitor struct {
 	generated.BaseBabyDuckVisitor
 	Directory           *symbol.FunctionDirectory
+	semanticCube        Cube
 	MemoryManager       *memory.Manager
+	typesStack          *stack.Stack
 	JumpsStack          *stack.Stack
 	CurrentScope        *stack.Stack // Stack of active scopes, with the innermost scope at the end.
 	Quadruples          []Quadruple
@@ -32,7 +34,9 @@ type Visitor struct {
 func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 	return &Visitor{
 		Directory:           directory,
+		semanticCube:        NewSemanticCube(),
 		MemoryManager:       memory.NewMemoryManager(memory.DefaultMemoryConfig),
+		typesStack:          stack.New(),
 		JumpsStack:          stack.New(),
 		CurrentScope:        stack.New(),
 		Quadruples:          []Quadruple{},
@@ -55,7 +59,8 @@ func (v *Visitor) newTemporaryVariable() any {
 		return temporaryVariable
 	}
 
-	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", "int")
+	dataType := v.typesStack.Peek().(memory.DataType)
+	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", dataType)
 	return virtualAddress
 }
 
@@ -473,11 +478,21 @@ func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionC
 		operator := v.Visit(ctx.AdditiveOperator(i))
 		nextTerm := v.Visit(ctx.Term(i + 1))
 
+		rightOperandType := v.typesStack.Pop().(string)
+		leftOperandType := v.typesStack.Pop().(string)
+
+		resultType, ok := v.semanticCube.GetResultType(leftOperandType, rightOperandType, operator.(string))
+		if !ok {
+			// TODO: Handle error
+			fmt.Println("error")
+		}
+		v.typesStack.Push(string(resultType))
+
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
 		virtualAddressOpRelational := memory.IdentifyOperator(operator.(string))
 		v.generateQuadruple(virtualAddressOpRelational, result, nextTerm, resultTemp)
-		return resultTemp
+		result = resultTemp
 	}
 
 	return result
@@ -506,11 +521,21 @@ func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
 		operator := v.Visit(ctx.MultiplicativeOperator(i))
 		nextFactor := v.Visit(ctx.Factor(i + 1))
 
+		rightOperandType := v.typesStack.Pop().(string)
+		leftOperandType := v.typesStack.Pop().(string)
+
+		resultType, ok := v.semanticCube.GetResultType(leftOperandType, rightOperandType, operator.(string))
+		if !ok {
+			// TODO: Handle error
+			fmt.Println("error")
+		}
+		v.typesStack.Push(string(resultType))
+
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
 		virtualAddressOpMultiplicative := memory.IdentifyOperator(operator.(string))
 		v.generateQuadruple(virtualAddressOpMultiplicative, result, nextFactor, resultTemp)
-		return resultTemp
+		result = resultTemp
 	}
 
 	return result
@@ -563,21 +588,24 @@ func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSig
 
 // VisitValue processes basic values (identifiers or constants)
 // Returns the identifier or constant value as a string
-func (v *Visitor) VisitValue(ctx *generated.ValueContext) interface{} {
+func (v *Visitor) VisitValue(ctx *generated.ValueContext) any {
+	// TODO: Validate negative
 	if ctx.Identifier() != nil {
 		variableName := ctx.Identifier().GetText()
+		scope := v.CurrentScope.Peek().(string)
+		variableInfo, _ := v.Directory.LookupVariable(scope, variableName)
+		v.typesStack.Push(string(variableInfo.VariableType))
 		if len(v.debug) > 0 && v.debug[0] {
 			return variableName
 		}
-		scope := v.CurrentScope.Peek().(string)
-		variableInfo, _ := v.Directory.LookupVariable(scope, variableName)
 		return variableInfo.VirtualDirection
 	} else {
 		constant := ctx.Constant().GetText()
+		virtualAddress, constantType := v.Directory.LookupConstant(constant)
+		v.typesStack.Push(string(constantType))
 		if len(v.debug) > 0 && v.debug[0] {
 			return constant
 		}
-		virtualAddress, _ := v.Directory.LookupConstant(constant)
 		return virtualAddress
 	}
 }
