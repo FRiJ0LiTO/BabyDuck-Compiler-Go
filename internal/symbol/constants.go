@@ -7,7 +7,7 @@ import (
 
 type Constant struct {
 	virtualDirection int
-	dataType memory.DataType
+	dataType         memory.DataType
 }
 
 // AddConstant adds a new constant to the function directory.
@@ -49,10 +49,10 @@ func (fd *FunctionDirectory) AddConstant(constant string, constantType memory.Da
 // Behavior:
 //   - If the constant is found in the Constants map, its virtual memory address is returned.
 //   - If the constant is not found, the function returns -1.
-func (fd *FunctionDirectory) LookupConstant(constantValue string) int {
+func (fd *FunctionDirectory) LookupConstant(constantValue string) (int, memory.DataType) {
 	if constantInfo, found := fd.Constants[constantValue]; found {
-		return constantInfo.virtualDirection
+		return constantInfo.virtualDirection, constantInfo.dataType
 	}
 
-	return -1
+	return -1, ""
 }
