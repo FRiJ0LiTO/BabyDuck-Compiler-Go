@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"BabyDuck/grammar/generated"
+	"BabyDuck/internal/memory"
 	"BabyDuck/internal/symbol"
 	"BabyDuck/structures/stack"
 	"fmt"
@@ -13,40 +14,49 @@ type Quadruple struct {
 	Operator     interface{}
 	LeftOperand  interface{}
 	RightOperand interface{}
-	Result       string
+	Result       interface{}
 	Scope        string
 }
 
 type Visitor struct {
 	generated.BaseBabyDuckVisitor
 	Directory           *symbol.FunctionDirectory
+	MemoryManager       *memory.Manager
 	JumpsStack          *stack.Stack
 	CurrentScope        *stack.Stack // Stack of active scopes, with the innermost scope at the end.
 	Quadruples          []Quadruple
 	TempVariableCounter int
+	debug               []bool
 }
 
-func NewVisitor(directory *symbol.FunctionDirectory) *Visitor {
+func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 	return &Visitor{
 		Directory:           directory,
+		MemoryManager:       memory.NewMemoryManager(memory.DefaultMemoryConfig),
 		JumpsStack:          stack.New(),
 		CurrentScope:        stack.New(),
 		Quadruples:          []Quadruple{},
 		TempVariableCounter: 0,
+		debug:               debug,
 	}
 }
 
 // newTemporaryVariable generates a new unique temporary variable name
 // Each call increments the counter to ensure uniqueness
 // Returns: A string representing the new temporary variable (e.g., "t0", "t1", etc.)
-func (v *Visitor) newTemporaryVariable() string {
-	// Create variable name with current counter value
-	temporaryVariable := "t" + strconv.Itoa(v.TempVariableCounter)
+func (v *Visitor) newTemporaryVariable() any {
+	if len(v.debug) > 0 && v.debug[0] {
+		// Create variable name with current counter value
+		temporaryVariable := "t" + strconv.Itoa(v.TempVariableCounter)
 
-	// Increment counter for next call
-	v.TempVariableCounter++
+		// Increment counter for next call
+		v.TempVariableCounter++
 
-	return temporaryVariable
+		return temporaryVariable
+	}
+
+	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", "int")
+	return virtualAddress
 }
 
 // generateQuadruple creates a new quadruple and adds it to the quadruples list
@@ -56,7 +66,7 @@ func (v *Visitor) newTemporaryVariable() string {
 //   - leftOperand: The first operand of the operation
 //   - rightOperand: The second operand of the operation (maybe empty)
 //   - result: The destination where the result will be stored
-func (v *Visitor) generateQuadruple(operator interface{}, leftOperand interface{}, rightOperand interface{}, result string) {
+func (v *Visitor) generateQuadruple(operator interface{}, leftOperand interface{}, rightOperand interface{}, result interface{}) {
 	quadruple := Quadruple{
 		Operator:     operator,
 		LeftOperand:  leftOperand,
@@ -252,7 +262,7 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} 
 	variableIdentifier := ctx.Identifier().GetText()
 
 	// Generate assignment quadruple
-	v.generateQuadruple("=", expressionResult.(string), "", variableIdentifier)
+	v.generateQuadruple("=", expressionResult, "", variableIdentifier)
 
 	return nil
 }
@@ -335,9 +345,9 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 // Generates PARAM quadruples for arguments and a CALL quadruple
 func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interface{} {
 	// Process all arguments
-	var argumentValues []string
+	var argumentValues []any
 	for _, expression := range ctx.ArgumentList().AllExpression() {
-		argumentValues = append(argumentValues, v.Visit(expression).(string))
+		argumentValues = append(argumentValues, v.Visit(expression))
 	}
 
 	// Generate parameter quadruples for each argument
@@ -358,7 +368,7 @@ func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) inte
 		if printable.Expression() != nil {
 			// If it's an expression, evaluate it and print the result
 			expressionResult := v.Visit(printable.Expression())
-			v.generateQuadruple("PRINT", "", "", expressionResult.(string))
+			v.generateQuadruple("PRINT", "", "", expressionResult)
 		} else {
 			// If it's a literal, print it directly
 			literalValue := ctx.Printable(i).GetText()
@@ -384,7 +394,7 @@ func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) interface{} 
 
 		// Create a temporary variable to store the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(relationalOperator.(string), leftOperand.(string), rightOperand.(string), resultTemp)
+		v.generateQuadruple(relationalOperator, leftOperand, rightOperand, resultTemp)
 		return resultTemp
 	}
 
@@ -420,7 +430,7 @@ func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionC
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(operator.(string), result.(string), nextTerm.(string), resultTemp)
+		v.generateQuadruple(operator, result, nextTerm, resultTemp)
 		return resultTemp
 	}
 
@@ -452,7 +462,7 @@ func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(operator.(string), result.(string), nextFactor.(string), resultTemp)
+		v.generateQuadruple(operator, result, nextFactor, resultTemp)
 		return resultTemp
 	}
 
@@ -496,7 +506,7 @@ func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSig
 	if ctx.AdditiveOperator() != nil && v.Visit(ctx.AdditiveOperator()) == ("-") {
 		// Create a temporary for the negated value
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple("NEG", valueResult.(string), "", resultTemp)
+		v.generateQuadruple("NEG", valueResult, "", resultTemp)
 		return resultTemp
 	}
 
@@ -507,8 +517,21 @@ func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSig
 // Returns the identifier or constant value as a string
 func (v *Visitor) VisitValue(ctx *generated.ValueContext) interface{} {
 	if ctx.Identifier() != nil {
-		return ctx.Identifier().GetText()
+		variableName := ctx.Identifier().GetText()
+		if len(v.debug) > 0 && v.debug[0] {
+			return variableName
+		}
+		scope := v.Directory.CurrentScope.Peek().(string)
+		_, virtualAddress, _ := v.Directory.LookupVariable(scope, variableName)
+		return virtualAddress
+
 	} else {
-		return ctx.Constant().GetText()
+		constant := ctx.Constant().GetText()
+		if len(v.debug) > 0 && v.debug[0] {
+			return constant
+		}
+		virtualAddress := v.Directory.LookupConstant(constant)
+		return virtualAddress
+
 	}
 }
