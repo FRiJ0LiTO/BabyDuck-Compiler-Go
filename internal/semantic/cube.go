@@ -13,9 +13,9 @@ type Cube struct {
 // resulting type for each combination of operand types and operators.
 //
 // Returns:
-//   *Cube: A pointer to the newly created semantic cube.
-func NewSemanticCube() *Cube {
-	cube := &Cube{
+//   Cube: The newly created semantic cube.
+func NewSemanticCube() Cube {
+	cube := Cube{
 		semantics: map[string]map[string]map[string]string{
 			"int": {
 				"int": {
