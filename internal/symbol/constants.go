@@ -35,3 +35,22 @@ func (fd *FunctionDirectory) AddConstant(constant string, virtualAddress int) er
 	}
 	return nil
 }
+
+// LookupConstant retrieves the virtual memory address of a constant from the function directory.
+//
+// Parameters:
+//   - constantValue (string): The value of the constant to look up.
+//
+// Returns:
+//   - (int): The virtual memory address of the constant if found, or -1 if the constant does not exist.
+//
+// Behavior:
+//   - If the constant is found in the Constants map, its virtual memory address is returned.
+//   - If the constant is not found, the function returns -1.
+func (fd *FunctionDirectory) LookupConstant(constantValue string) int {
+	if constantInfo, found := fd.Constants[constantValue]; found {
+		return constantInfo.virtualDirection
+	}
+
+	return -1
+}
