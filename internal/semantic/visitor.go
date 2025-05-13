@@ -219,7 +219,13 @@ func (v *Visitor) VisitFunctionBody(ctx *generated.FunctionBodyContext) interfac
 
 	// Generate end function quadruple
 	v.generateQuadruple("ENDFUNC", "", "", "")
-	v.TempVariableCounter = 0
+
+	if len(v.debug) > 0 && v.debug[0] {
+		v.TempVariableCounter = 0
+	} else {
+		v.MemoryManager.ResetLocal()
+	}
+
 	return nil
 }
 
