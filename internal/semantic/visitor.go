@@ -95,8 +95,26 @@ func (v *Visitor) PrintQuadruplesTable() {
 	fmt.Println("-------|----------|------------|------------|--------------------|----------")
 
 	for i, quad := range v.Quadruples {
-		fmt.Printf("%6d | %8d | %10d | %10s | %18d | %s\n",
-			i, quad.Operator, quad.LeftOperand, quad.RightOperand, quad.Result, quad.Scope)
+		formatOperand := func(operand interface{}) string {
+			switch val := operand.(type) {
+			case int:
+				return fmt.Sprintf("%d", val)
+			case string:
+				return val
+			case nil:
+				return "nil"
+			default:
+				return fmt.Sprintf("%v", val)
+			}
+		}
+
+		opStr := formatOperand(quad.Operator)
+		leftStr := formatOperand(quad.LeftOperand)
+		rightStr := formatOperand(quad.RightOperand)
+		resultStr := formatOperand(quad.Result)
+
+		fmt.Printf("%6d | %8s | %10s | %10s | %18s | %s\n",
+			i, opStr, leftStr, rightStr, resultStr, quad.Scope)
 	}
 
 	fmt.Println("=============================================================")
