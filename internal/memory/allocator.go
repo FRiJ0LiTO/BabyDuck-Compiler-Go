@@ -30,6 +30,30 @@ type Configuration struct {
 	ConstBoolEnd     int
 }
 
+type Operator int
+
+const (
+	ADD Operator = iota + 1
+	SUB
+	MUL
+	DIV
+	NEG
+
+	GREATER
+	LESS
+	NOTEQUAL
+
+	GOTOF
+	GOTO
+
+	PRINT
+
+	PARAM
+	CALL
+
+	ASSIGN
+)
+
 // DefaultMemoryConfig provides the default memory address ranges for all variable types and data types.
 // These ranges are used to initialize the memory manager with predefined values.
 var DefaultMemoryConfig = Configuration{
@@ -57,4 +81,40 @@ var DefaultMemoryConfig = Configuration{
 	ConstFloatEnd:    11999,
 	ConstBoolStart:   12000,
 	ConstBoolEnd:     12999,
+}
+
+func IdentifyOperator(operator string, isUnary ...bool) Operator {
+	switch operator {
+	case "+":
+		return ADD
+	case "-":
+		if len(isUnary) > 0 && isUnary[0] {
+			return NEG
+		}
+		return SUB
+	case "*":
+		return MUL
+	case "/":
+		return DIV
+	case ">":
+		return GREATER
+	case "<":
+		return LESS
+	case "!=":
+		return NOTEQUAL
+	case "GOTOF":
+		return GOTOF
+	case "GOTO":
+		return GOTO
+	case "PRINT":
+		return PRINT
+	case "PARAM":
+		return PARAM
+	case "CALL":
+		return CALL
+	case "=":
+		return ASSIGN
+	default:
+		return -1
+	}
 }
