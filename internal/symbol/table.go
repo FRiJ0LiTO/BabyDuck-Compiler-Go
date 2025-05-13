@@ -62,7 +62,7 @@ func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType, 
 func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string) error {
 	for i := len(scopes) - 1; i >= 0; i-- {
 		scope := scopes[i]
-		_, exists := fd.LookupVariable(scope, name)
+		_, _, exists := fd.LookupVariable(scope, name)
 		if exists {
 			return nil
 		}
@@ -80,12 +80,12 @@ func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string
 // Returns:
 //   - string: The data type of the variable if found.
 //   - bool: A boolean indicating whether the variable was found in the specified scope.
-func (fd *FunctionDirectory) LookupVariable(scope string, name string) (memory.DataType, bool) {
+func (fd *FunctionDirectory) LookupVariable(scope string, name string) (memory.DataType, int, bool) {
 	varTable, scopeExists := fd.Directory[scope]
 	if !scopeExists {
-		return "", false
+		return "", -1, false
 	}
 
 	variable, varExists := varTable[name]
-	return variable.variableType, varExists
+	return variable.variableType, variable.virtualDirection, varExists
 }
