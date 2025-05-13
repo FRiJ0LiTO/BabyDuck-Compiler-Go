@@ -163,7 +163,8 @@ func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 	v.CurrentScope.Push("program")
 
 	// Generate program start quadruple
-	v.generateQuadruple("PROGRAM", "", "", "")
+	virtualAddressOpPro := memory.IdentifyOperator("PROGRAM")
+	v.generateQuadruple(virtualAddressOpPro, 0, 0, 0)
 
 	// Process program header if present
 	if ctx.ProgramHeader() != nil {
@@ -183,7 +184,8 @@ func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 	}
 
 	// Generate program end quadruple
-	v.generateQuadruple("END", "", "", "")
+	virtualAddressOpEnd := memory.IdentifyOperator("END")
+	v.generateQuadruple(virtualAddressOpEnd, 0, 0, 0)
 
 	return nil
 }
@@ -202,7 +204,8 @@ func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationCon
 	v.CurrentScope.Push(functionName)
 
 	// Generate function declaration quadruple
-	v.generateQuadruple("FUNC", functionName, "", "")
+	virtualAddress := memory.IdentifyOperator("FUNC")
+	v.generateQuadruple(virtualAddress, functionName, 0, 0)
 
 	// Process function body
 	return v.Visit(ctx.FunctionBody())
@@ -218,7 +221,8 @@ func (v *Visitor) VisitFunctionBody(ctx *generated.FunctionBodyContext) interfac
 	v.CurrentScope.Pop()
 
 	// Generate end function quadruple
-	v.generateQuadruple("ENDFUNC", "", "", "")
+	virtualAddressOp := memory.IdentifyOperator("ENDFUNC")
+	v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 	if len(v.debug) > 0 && v.debug[0] {
 		v.TempVariableCounter = 0
@@ -276,7 +280,8 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} 
 	}
 
 	// Generate assignment quadruple
-	v.generateQuadruple("=", expressionResult, "", result)
+	virtualAddressOp := memory.IdentifyOperator("=")
+	v.generateQuadruple(virtualAddressOp, expressionResult, 0, result)
 
 	return nil
 }
@@ -292,7 +297,8 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 		// Save position for GOTOF instruction that will be filled later
 		jumpPosition := len(v.Quadruples)
 		v.JumpsStack.Push(jumpPosition)
-		v.generateQuadruple("GOTOF", "", "", "")
+		virtualAddressOp := memory.IdentifyOperator("GOTOF")
+		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 		// Process the code block within the if statement
 		v.Visit(ctx.IfBlock().CodeBlock())
@@ -305,7 +311,8 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 
 		// Add GOTO at the end of if block to skip else block
 		v.JumpsStack.Push(len(v.Quadruples))
-		v.generateQuadruple("GOTO", "", "", "")
+		virtualAddressOp := memory.IdentifyOperator("GOTO")
+		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 		// Update the GOTOF to jump to the beginning of the else block
 		v.updateQuadruple(falseJumpPosition.(int), strconv.Itoa(len(v.Quadruples)))
@@ -337,7 +344,8 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 		// Save position for GOTOF that will exit the loop when condition is false
 		conditionalJumpPosition := len(v.Quadruples)
 		v.JumpsStack.Push(conditionalJumpPosition)
-		v.generateQuadruple("GOTOF", "", "", "")
+		virtualAddressOpGotoF := memory.IdentifyOperator("GOTOF")
+		v.generateQuadruple(virtualAddressOpGotoF, 0, 0, 0)
 
 		// Process the loop body
 		v.Visit(ctx.CodeBlock())
@@ -350,7 +358,8 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 		v.updateQuadruple(exitJumpPosition.(int), strconv.Itoa(len(v.Quadruples)+1))
 
 		// Add a jump back to the condition evaluation
-		v.generateQuadruple("GOTO", "", "", strconv.Itoa(returnToConditionPosition.(int)))
+		virtualAddressOpGoto := memory.IdentifyOperator("GOTO")
+		v.generateQuadruple(virtualAddressOpGoto, 0, 0, returnToConditionPosition.(int))
 	}
 	return nil
 }
@@ -366,12 +375,14 @@ func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interfac
 
 	// Generate parameter quadruples for each argument
 	for _, argValue := range argumentValues {
-		v.generateQuadruple("PARAM", argValue, "", "")
+		virtualAddressOpParam := memory.IdentifyOperator("PARAM")
+		v.generateQuadruple(virtualAddressOpParam, argValue, 0, 0)
 	}
 
 	// Generate the function call quadruple
 	functionName := ctx.Identifier().GetText()
-	v.generateQuadruple("CALL", functionName, argumentValues, "")
+	virtualAddressOp := memory.IdentifyOperator("CALL")
+	v.generateQuadruple(virtualAddressOp, functionName, argumentValues, 0)
 	return nil
 }
 
@@ -379,14 +390,15 @@ func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interfac
 // Generates PRINT quadruples for each printable item
 func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) interface{} {
 	for i, printable := range ctx.AllPrintable() {
+		virtualAddressOpPrint := memory.IdentifyOperator("PRINT")
 		if printable.Expression() != nil {
 			// If it's an expression, evaluate it and print the result
 			expressionResult := v.Visit(printable.Expression())
-			v.generateQuadruple("PRINT", "", "", expressionResult)
+			v.generateQuadruple(virtualAddressOpPrint, 0, 0, expressionResult)
 		} else {
 			// If it's a literal, print it directly
 			literalValue := ctx.Printable(i).GetText()
-			v.generateQuadruple("PRINT", "", "", literalValue)
+			v.generateQuadruple(virtualAddressOpPrint, 0, 0, literalValue)
 		}
 	}
 	return nil
@@ -408,7 +420,8 @@ func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) interface{} 
 
 		// Create a temporary variable to store the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(relationalOperator, leftOperand, rightOperand, resultTemp)
+		virtualAddressOp := memory.IdentifyOperator(relationalOperator.(string))
+		v.generateQuadruple(virtualAddressOp, leftOperand, rightOperand, resultTemp)
 		return resultTemp
 	}
 
@@ -444,7 +457,8 @@ func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionC
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(operator, result, nextTerm, resultTemp)
+		virtualAddressOpRelational := memory.IdentifyOperator(operator.(string))
+		v.generateQuadruple(virtualAddressOpRelational, result, nextTerm, resultTemp)
 		return resultTemp
 	}
 
@@ -476,7 +490,8 @@ func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple(operator, result, nextFactor, resultTemp)
+		virtualAddressOpMultiplicative := memory.IdentifyOperator(operator.(string))
+		v.generateQuadruple(virtualAddressOpMultiplicative, result, nextFactor, resultTemp)
 		return resultTemp
 	}
 
@@ -520,7 +535,8 @@ func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSig
 	if ctx.AdditiveOperator() != nil && v.Visit(ctx.AdditiveOperator()) == ("-") {
 		// Create a temporary for the negated value
 		resultTemp := v.newTemporaryVariable()
-		v.generateQuadruple("NEG", valueResult, "", resultTemp)
+		virtualAddressOp := memory.IdentifyOperator("NEG")
+		v.generateQuadruple(virtualAddressOp, valueResult, 0, resultTemp)
 		return resultTemp
 	}
 
