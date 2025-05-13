@@ -2,6 +2,7 @@ package parser
 
 import (
 	"BabyDuck/grammar/generated"
+	"BabyDuck/internal/memory"
 	"BabyDuck/internal/symbol"
 	"fmt"
 )
@@ -10,18 +11,20 @@ import (
 // It implements the BaseBabyDuckListener interface to process parse tree events.
 type DirectoryBuilder struct {
 	generated.BaseBabyDuckListener
-	Directory *symbol.FunctionDirectory // Symbol table storing functions and variables
-	Errors    []string                  // Collection of semantic errors found during parsing
-	Debug     bool                      // Debugging Flag
+	Directory    *symbol.FunctionDirectory // Symbol table storing functions and variables
+	MemoryManger *memory.Manager // // Manages memory allocation for variables, constants
+	Errors       []string // Collection of semantic errors found during parsing
+	Debug        bool     // Debugging Flag
 }
 
 // NewDirectoryBuilder creates and initializes a new DirectoryBuilder instance.
 // Returns a pointer to the newly created DirectoryBuilder.
 func NewDirectoryBuilder(debug bool) *DirectoryBuilder {
 	return &DirectoryBuilder{
-		Directory: symbol.NewFunctionDirectory(),
-		Errors:    []string{},
-		Debug:     debug,
+		Directory:    symbol.NewFunctionDirectory(),
+		MemoryManger: memory.NewMemoryManager(memory.DefaultMemoryConfig),
+		Errors:       []string{},
+		Debug:        debug,
 	}
 }
 
@@ -36,13 +39,14 @@ func (d *DirectoryBuilder) EnterFunctionDeclaration(ctx *generated.FunctionDecla
 		d.Errors = append(d.Errors, err.Error())
 	}
 
-	d.Directory.CurrentScope = append(d.Directory.CurrentScope, functionName)
+	d.Directory.CurrentScope.Push(functionName)
 }
 
 // ExitFunctionDeclaration is called when exiting a function declaration node in the parse tree.
 // It restores the scope that existed before entering the function.
-func (d *DirectoryBuilder) ExitFunctionDeclaration(ctx *generated.FunctionDeclarationContext) {
-	d.Directory.CurrentScope = d.Directory.CurrentScope[:len(d.Directory.CurrentScope)-1]
+func (d *DirectoryBuilder) ExitFunctionDeclaration(_ *generated.FunctionDeclarationContext) {
+	d.Directory.CurrentScope.Pop()
+	d.MemoryManger.ResetLocal()
 }
 
 // ExitVarDecl is called when exiting a variable declaration node in the parse tree.
@@ -53,8 +57,13 @@ func (d *DirectoryBuilder) ExitVarDecl(ctx *generated.VarDeclContext) {
 	for _, idNode := range ctx.IdList().AllID() {
 		variableName := idNode.GetText()
 
+		virtualAddress, err := d.allocateVirtualMemory(memory.DataType(variableType))
+		if err != nil {
+			d.Errors = append(d.Errors, err.Error())
+		}
+
 		// Register Variable
-		err := d.Directory.AddVariable(variableName, variableType)
+		err = d.Directory.AddVariable(variableName, memory.DataType(variableType), virtualAddress)
 		if err != nil {
 			// Variable already defined in current scope"
 			d.Errors = append(d.Errors, err.Error())
@@ -68,7 +77,12 @@ func (d *DirectoryBuilder) EnterParameter(ctx *generated.ParameterContext) {
 	paramName := ctx.Identifier().GetText()
 	paramType := ctx.Type_().GetText()
 
-	err := d.Directory.AddVariable(paramName, paramType)
+	virtualAddress, err := d.allocateVirtualMemory(memory.DataType(paramType))
+	if err != nil {
+		d.Errors = append(d.Errors, err.Error())
+	}
+
+	err = d.Directory.AddVariable(paramName, memory.DataType(paramType), virtualAddress)
 	if err != nil {
 		// Parameter already defined in current function
 		d.Errors = append(d.Errors, err.Error())
@@ -79,7 +93,13 @@ func (d *DirectoryBuilder) EnterParameter(ctx *generated.ParameterContext) {
 // It validates that the variable being assigned to exists in the current scope.
 func (d *DirectoryBuilder) ExitAssignment(ctx *generated.AssignmentContext) {
 	variableName := ctx.Identifier().GetText()
-	scopes := d.Directory.CurrentScope
+	var scopes []string
+
+	temp := d.Directory.CurrentScope.Top
+	for temp != nil {
+		scopes = append(scopes, temp.Value.(string))
+		temp = temp.Next
+	}
 
 	err := d.Directory.ValidateVariableExists(scopes, variableName)
 	if err != nil {
@@ -175,16 +195,97 @@ func (d *DirectoryBuilder) validateFactor(factor generated.IFactorContext) {
 func (d *DirectoryBuilder) validateValueWithOptionalSign(value generated.IValueWithOptionalSignContext) {
 	if value.Value().Identifier() != nil {
 		variableName := value.Value().Identifier().GetText()
-		err := d.Directory.ValidateVariableExists(d.Directory.CurrentScope, variableName)
+		var scopes []string
+		temp := d.Directory.CurrentScope.Top
+		for temp != nil {
+			scopes = append(scopes, temp.Value.(string))
+			temp = temp.Next
+		}
+
+		err := d.Directory.ValidateVariableExists(scopes, variableName)
 		if err != nil {
 			// Undefined variable used in expression
 			d.Errors = append(d.Errors, err.Error())
 		}
 	}
 
-	if value.Value().Constant() != nil {
-		if d.Debug {
-			fmt.Println("Processing constant:", value.Value().Constant().GetText())
+	constant := value.Value().Constant()
+
+	if d.Debug {
+		fmt.Println("Processing constant:", constant.GetText())
+	}
+
+	if constant != nil {
+		if constant.CONST_INT() != nil {
+			constantVal := constant.CONST_INT().GetText()
+			err := d.registerConstantInMemory(constantVal, memory.Integer)
+			if err != nil {
+				d.Errors = append(d.Errors, err.Error())
+			}
+		} else {
+			constantVal := constant.CONST_FLOAT().GetText()
+			err := d.registerConstantInMemory(constantVal, memory.Float)
+			if err != nil {
+				d.Errors = append(d.Errors, err.Error())
+			}
 		}
 	}
+}
+
+// allocateVirtualMemory allocates a virtual memory address for a variable based on its type and scope
+//
+// This function determines the variable's scope (global or local) and requests a memory address
+// from the memory manager accordingly.
+//
+// Parameters:
+//   - dataType: The data type of the variable (e.g., int, float, string)
+//
+// Returns:
+//   - int: The allocated virtual memory address
+//   - error: An error if address allocation fails
+func (d *DirectoryBuilder) allocateVirtualMemory(dataType memory.DataType) (int, error) {
+	// Determine the variable scope (Global or Local) based on current context
+	var scopeType memory.VarType
+	currentScope := d.Directory.CurrentScope.Peek()
+
+	if currentScope == "program" {
+		scopeType = memory.Global
+	} else {
+		scopeType = memory.Local
+	}
+
+	// Request a virtual memory address from the memory manager
+	virtualAddress, err := d.MemoryManger.GetAddress(scopeType, dataType)
+	if err != nil {
+		return -1, fmt.Errorf("failed to allocate memory: %w", err)
+	}
+
+	return virtualAddress, nil
+}
+
+// registerConstantInMemory registers a constant value in the memory manager and symbol table
+//
+// This function allocates memory for constants and records them in the constant table.
+// Constants are stored in a dedicated memory segment.
+//
+// Parameters:
+//   - constantValue: The string representation of the constant
+//   - dataType: The data type of the constant (e.g., int, float, string)
+//
+// Returns:
+//   - error: An error if registration fails
+func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType) error {
+	// Allocate memory address in the constant segment
+	virtualAddress, err := d.MemoryManger.GetAddress(memory.Constant, dataType)
+	if err != nil {
+		return fmt.Errorf("failed to allocate constant memory: %w", err)
+	}
+
+	// Register the constant in the directory/symbol table
+	err = d.Directory.AddConstant(constantValue, virtualAddress)
+	if err != nil {
+		return fmt.Errorf("failed to register constant: %w", err)
+	}
+
+	return nil
 }
