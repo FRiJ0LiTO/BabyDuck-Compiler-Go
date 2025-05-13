@@ -1,14 +1,18 @@
 package symbol
 
-import "fmt"
+import (
+	"BabyDuck/internal/memory"
+	"fmt"
+)
 
 // Variable represents a variable in the symbol table with its type and value.
 // Fields:
 //   - variableType (string): The data type of the variable.
 //   - VariableValue (interface{}): The value of the variable, which can be of any type.
 type Variable struct {
-	variableType  string
-	VariableValue interface{}
+	variableType     memory.DataType
+	virtualDirection int
+	VariableValue    interface{}
 }
 
 // VariableTable is a map of variable names to their corresponding Variable objects.
@@ -23,14 +27,14 @@ type VariableTable map[string]Variable
 //
 // Returns:
 //   - error: An error if the variable is already declared in the current scope or if no active scope exists.
-func (fd *FunctionDirectory) AddVariable(name string, varType string) error {
-	if len(fd.CurrentScope) == 0 {
+func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType, virtualAddress int) error {
+	if fd.CurrentScope.Height == 0 {
 		return fmt.Errorf("error: no active scope defined")
 	}
 
 	// Get the current scope from the stack.
-	context := fd.CurrentScope[len(fd.CurrentScope)-1]
-	varTable := fd.Directory[context]
+	context := fd.CurrentScope.Peek()
+	varTable := fd.Directory[context.(string)]
 
 	// Check if the variable already exists in the current scope.
 	if _, exists := varTable[name]; exists {
@@ -39,8 +43,9 @@ func (fd *FunctionDirectory) AddVariable(name string, varType string) error {
 
 	// Add the new variable to the variable table.
 	varTable[name] = Variable{
-		variableType:  varType,
-		VariableValue: nil,
+		variableType:     dataType,
+		virtualDirection: virtualAddress,
+		VariableValue:    nil,
 	}
 
 	return nil
@@ -75,7 +80,7 @@ func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string
 // Returns:
 //   - string: The data type of the variable if found.
 //   - bool: A boolean indicating whether the variable was found in the specified scope.
-func (fd *FunctionDirectory) LookupVariable(scope string, name string) (string, bool) {
+func (fd *FunctionDirectory) LookupVariable(scope string, name string) (memory.DataType, bool) {
 	varTable, scopeExists := fd.Directory[scope]
 	if !scopeExists {
 		return "", false
