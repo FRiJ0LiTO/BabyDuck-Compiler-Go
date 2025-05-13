@@ -34,6 +34,7 @@ func (fd *FunctionDirectory) AddConstant(constant string, constantType memory.Da
 
 	fd.Constants[constant] = Constant{
 		virtualDirection: virtualAddress,
+		dataType:         constantType,
 	}
 	return nil
 }
