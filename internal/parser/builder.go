@@ -11,20 +11,20 @@ import (
 // It implements the BaseBabyDuckListener interface to process parse tree events.
 type DirectoryBuilder struct {
 	generated.BaseBabyDuckListener
-	Directory    *symbol.FunctionDirectory // Symbol table storing functions and variables
-	MemoryManger *memory.Manager // // Manages memory allocation for variables, constants
-	Errors       []string // Collection of semantic errors found during parsing
-	Debug        bool     // Debugging Flag
+	Directory     *symbol.FunctionDirectory // Symbol table storing functions and variables
+	MemoryManager *memory.Manager           // // Manages memory allocation for variables, constants
+	Errors        []string                  // Collection of semantic errors found during parsing
+	Debug         bool                      // Debugging Flag
 }
 
 // NewDirectoryBuilder creates and initializes a new DirectoryBuilder instance.
 // Returns a pointer to the newly created DirectoryBuilder.
 func NewDirectoryBuilder(debug bool) *DirectoryBuilder {
 	return &DirectoryBuilder{
-		Directory:    symbol.NewFunctionDirectory(),
-		MemoryManger: memory.NewMemoryManager(memory.DefaultMemoryConfig),
-		Errors:       []string{},
-		Debug:        debug,
+		Directory:     symbol.NewFunctionDirectory(),
+		MemoryManager: memory.NewMemoryManager(memory.DefaultMemoryConfig),
+		Errors:        []string{},
+		Debug:         debug,
 	}
 }
 
@@ -46,7 +46,7 @@ func (d *DirectoryBuilder) EnterFunctionDeclaration(ctx *generated.FunctionDecla
 // It restores the scope that existed before entering the function.
 func (d *DirectoryBuilder) ExitFunctionDeclaration(_ *generated.FunctionDeclarationContext) {
 	d.Directory.CurrentScope.Pop()
-	d.MemoryManger.ResetLocal()
+	d.MemoryManager.ResetLocal()
 }
 
 // ExitVarDecl is called when exiting a variable declaration node in the parse tree.
@@ -255,7 +255,7 @@ func (d *DirectoryBuilder) allocateVirtualMemory(dataType memory.DataType) (int,
 	}
 
 	// Request a virtual memory address from the memory manager
-	virtualAddress, err := d.MemoryManger.GetAddress(scopeType, dataType)
+	virtualAddress, err := d.MemoryManager.GetAddress(scopeType, dataType)
 	if err != nil {
 		return -1, fmt.Errorf("failed to allocate memory: %w", err)
 	}
@@ -276,7 +276,7 @@ func (d *DirectoryBuilder) allocateVirtualMemory(dataType memory.DataType) (int,
 //   - error: An error if registration fails
 func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType) error {
 	// Allocate memory address in the constant segment
-	virtualAddress, err := d.MemoryManger.GetAddress(memory.Constant, dataType)
+	virtualAddress, err := d.MemoryManager.GetAddress(memory.Constant, dataType)
 	if err != nil {
 		return fmt.Errorf("failed to allocate constant memory: %w", err)
 	}
