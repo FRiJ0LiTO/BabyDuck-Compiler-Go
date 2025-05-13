@@ -90,11 +90,18 @@ func (d *DirectoryBuilder) EnterParameter(ctx *generated.ParameterContext) {
 }
 
 // ExitAssignment is called when exiting an assignment statement node in the parse tree.
-// It validates that the variable being assigned to exists in the current scope.
+// It validates that the variable being assigned to exists in the current scope and validates the expression being assigned.
+//
+// Behavior:
+//   - Extracts the variable name from the assignment context.
+//   - Collects all active scopes starting from the current scope.
+//   - Validates if the variable exists in any of the collected scopes using the symbol table.
+//   - If the variable does not exist, appends an error message to the Errors list.
+//   - If the assignment includes an expression, validates the expression.
 func (d *DirectoryBuilder) ExitAssignment(ctx *generated.AssignmentContext) {
 	variableName := ctx.Identifier().GetText()
-	var scopes []string
 
+	var scopes []string
 	temp := d.Directory.CurrentScope.Top
 	for temp != nil {
 		scopes = append(scopes, temp.Value.(string))
@@ -103,8 +110,11 @@ func (d *DirectoryBuilder) ExitAssignment(ctx *generated.AssignmentContext) {
 
 	err := d.Directory.ValidateVariableExists(scopes, variableName)
 	if err != nil {
-		// Undefined variable used in assignment
 		d.Errors = append(d.Errors, err.Error())
+	}
+
+	if ctx.Expression() != nil {
+		d.validateExpression(ctx.Expression())
 	}
 }
 
@@ -190,45 +200,77 @@ func (d *DirectoryBuilder) validateFactor(factor generated.IFactorContext) {
 	}
 }
 
-// validateValueWithOptionalSign validates a value (which may have a sign) by checking
-// whether it's an identifier (variable) that needs to exist or a constant.
+// validateValueWithOptionalSign validates a value (which may have a sign) by determining
+// whether it is an identifier (variable) or a constant and processing it accordingly.
+//
+// Parameters:
+//   - value (generated.IValueWithOptionalSignContext): The context containing the value to validate.
+//
+// Behavior:
+//   - If the value is an identifier, it validates the variable by checking its existence in the current scope.
+//   - If the value is a constant, it registers the constant in the memory manager and symbol table.
 func (d *DirectoryBuilder) validateValueWithOptionalSign(value generated.IValueWithOptionalSignContext) {
 	if value.Value().Identifier() != nil {
-		variableName := value.Value().Identifier().GetText()
-		var scopes []string
-		temp := d.Directory.CurrentScope.Top
-		for temp != nil {
-			scopes = append(scopes, temp.Value.(string))
-			temp = temp.Next
-		}
+		d.validateVariable(value)
+	} else {
+		d.registerConstant(value)
+	}
+}
 
-		err := d.Directory.ValidateVariableExists(scopes, variableName)
-		if err != nil {
-			// Undefined variable used in expression
-			d.Errors = append(d.Errors, err.Error())
-		}
+// validateVariable checks if a variable exists in the current scope or any parent scope.
+//
+// Parameters:
+//   - value (generated.IValueWithOptionalSignContext): The context containing the variable to validate.
+//
+// Behavior:
+//   - Extracts the variable name from the provided context.
+//   - Collects all active scopes starting from the current scope.
+//   - Validates if the variable exists in any of the collected scopes using the symbol table.
+//   - If the variable does not exist, appends an error message to the Errors list.
+func (d *DirectoryBuilder) validateVariable(value generated.IValueWithOptionalSignContext) {
+	variableName := value.Value().Identifier().GetText()
+
+	var scopes []string
+	temp := d.Directory.CurrentScope.Top
+	for temp != nil {
+		scopes = append(scopes, temp.Value.(string))
+		temp = temp.Next
 	}
 
+	err := d.Directory.ValidateVariableExists(scopes, variableName)
+	if err != nil {
+		d.Errors = append(d.Errors, err.Error())
+	}
+}
+
+// registerConstant processes a constant value and registers it in the memory manager and symbol table.
+//
+// Parameters:
+//   - value (generated.IValueWithOptionalSignContext): The context containing the constant value to be registered.
+//
+// Behavior:
+//   - Extracts the constant value from the provided context.
+//   - If debugging is enabled, logs the constant being processed.
+//   - Determines the type of the constant (integer or float) and registers it in memory.
+//   - If an error occurs during registration, appends the error to the Errors list.
+func (d *DirectoryBuilder) registerConstant(value generated.IValueWithOptionalSignContext) {
 	constant := value.Value().Constant()
 
 	if d.Debug {
 		fmt.Println("Processing constant:", constant.GetText())
 	}
 
-	if constant != nil {
-		if constant.CONST_INT() != nil {
-			constantVal := constant.CONST_INT().GetText()
-			err := d.registerConstantInMemory(constantVal, memory.Integer)
-			if err != nil {
-				d.Errors = append(d.Errors, err.Error())
-			}
-		} else {
-			constantVal := constant.CONST_FLOAT().GetText()
-			err := d.registerConstantInMemory(constantVal, memory.Float)
-			if err != nil {
-				d.Errors = append(d.Errors, err.Error())
-			}
-		}
+	var err error
+	if constant.CONST_INT() != nil {
+		constantVal := constant.CONST_INT().GetText()
+		err = d.registerConstantInMemory(constantVal, memory.Integer)
+	} else {
+		constantVal := constant.CONST_FLOAT().GetText()
+		err = d.registerConstantInMemory(constantVal, memory.Float)
+	}
+
+	if err != nil {
+		d.Errors = append(d.Errors, err.Error())
 	}
 }
 
