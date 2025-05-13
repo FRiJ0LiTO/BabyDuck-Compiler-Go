@@ -79,6 +79,7 @@ func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string
 //
 // Returns:
 //   - string: The data type of the variable if found.
+//   - int: Virtual address of the variable if found.
 //   - bool: A boolean indicating whether the variable was found in the specified scope.
 func (fd *FunctionDirectory) LookupVariable(scope string, name string) (memory.DataType, int, bool) {
 	varTable, scopeExists := fd.Directory[scope]
