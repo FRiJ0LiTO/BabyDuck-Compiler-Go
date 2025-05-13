@@ -1,11 +1,13 @@
 package symbol
 
 import (
+	"BabyDuck/internal/memory"
 	"fmt"
 )
 
 type Constant struct {
 	virtualDirection int
+	dataType memory.DataType
 }
 
 // AddConstant adds a new constant to the function directory.
@@ -21,7 +23,7 @@ type Constant struct {
 //   - If there is no active scope (i.e., CurrentScope.Height is 0), an error is returned.
 //   - If the constant already exists in the Constants map, the function does nothing and returns nil.
 //   - Otherwise, the constant is added to the Constants map with the provided virtual address.
-func (fd *FunctionDirectory) AddConstant(constant string, virtualAddress int) error {
+func (fd *FunctionDirectory) AddConstant(constant string, constantType memory.DataType, virtualAddress int) error {
 	if fd.CurrentScope.Height == 0 {
 		return fmt.Errorf("error: no active scope defined")
 	}
