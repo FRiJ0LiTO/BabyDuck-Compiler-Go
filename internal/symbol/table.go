@@ -10,8 +10,8 @@ import (
 //   - variableType (string): The data type of the variable.
 //   - VariableValue (interface{}): The value of the variable, which can be of any type.
 type Variable struct {
-	variableType     memory.DataType
-	virtualDirection int
+	VariableType     memory.DataType
+	VirtualDirection int
 	VariableValue    interface{}
 }
 
@@ -43,8 +43,8 @@ func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType, 
 
 	// Add the new variable to the variable table.
 	varTable[name] = Variable{
-		variableType:     dataType,
-		virtualDirection: virtualAddress,
+		VariableType:     dataType,
+		VirtualDirection: virtualAddress,
 		VariableValue:    nil,
 	}
 
@@ -59,16 +59,17 @@ func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType, 
 //
 // Returns:
 //   - error: An error if the variable is not found in any accessible scope.
-func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string) error {
+func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string) (Variable, bool) {
 	for i := len(scopes) - 1; i >= 0; i-- {
 		scope := scopes[i]
-		_, _, exists := fd.LookupVariable(scope, name)
+		variable, exists := fd.LookupVariable(scope, name)
 		if exists {
-			return nil
+			return variable, exists
 		}
 	}
+	return Variable{}, false
 
-	return fmt.Errorf("error: undefined variable '%s'", name)
+	//return fmt.Errorf("error: undefined variable '%s'", name)
 }
 
 // LookupVariable searches for a variable in a specific scope.
@@ -81,12 +82,12 @@ func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string
 //   - string: The data type of the variable if found.
 //   - int: Virtual address of the variable if found.
 //   - bool: A boolean indicating whether the variable was found in the specified scope.
-func (fd *FunctionDirectory) LookupVariable(scope string, name string) (memory.DataType, int, bool) {
+func (fd *FunctionDirectory) LookupVariable(scope string, name string) (Variable, bool) {
 	varTable, scopeExists := fd.Directory[scope]
 	if !scopeExists {
-		return "", -1, false
+		return Variable{}, false
 	}
 
 	variable, varExists := varTable[name]
-	return variable.variableType, variable.virtualDirection, varExists
+	return variable, varExists
 }
