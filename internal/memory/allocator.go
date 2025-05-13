@@ -50,6 +50,7 @@ const (
 
 	FUNC
 	PARAM
+	ENDFUNC
 	CALL
 
 	ASSIGN
@@ -87,19 +88,18 @@ var DefaultMemoryConfig = Configuration{
 	ConstBoolEnd:     12999,
 }
 
-func IdentifyOperator(operator string, isUnary ...bool) Operator {
+func IdentifyOperator(operator string) Operator {
 	switch operator {
 	case "+":
 		return ADD
 	case "-":
-		if len(isUnary) > 0 && isUnary[0] {
-			return NEG
-		}
 		return SUB
 	case "*":
 		return MUL
 	case "/":
 		return DIV
+	case "NEG":
+		return NEG
 	case ">":
 		return GREATER
 	case "<":
@@ -116,6 +116,8 @@ func IdentifyOperator(operator string, isUnary ...bool) Operator {
 		return FUNC
 	case "PARAM":
 		return PARAM
+	case "ENDFUNC":
+		return ENDFUNC
 	case "CALL":
 		return CALL
 	case "=":
