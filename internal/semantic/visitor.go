@@ -95,7 +95,7 @@ func (v *Visitor) PrintQuadruplesTable() {
 	fmt.Println("-------|----------|------------|------------|--------------------|----------")
 
 	for i, quad := range v.Quadruples {
-		fmt.Printf("%6d | %8s | %10s | %10s | %18s | %s\n",
+		fmt.Printf("%6d | %8d | %10d | %10s | %18d | %s\n",
 			i, quad.Operator, quad.LeftOperand, quad.RightOperand, quad.Result, quad.Scope)
 	}
 
@@ -160,7 +160,7 @@ func (v *Visitor) Visit(tree antlr.ParseTree) interface{} {
 // Generates PROGRAM and END quadruples and visits all program sections
 func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 	// Push program scope to the stack
-	v.CurrentScope.Push("Program")
+	v.CurrentScope.Push("program")
 
 	// Generate program start quadruple
 	v.generateQuadruple("PROGRAM", "", "", "")
@@ -266,9 +266,17 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} 
 
 	// Get the identifier on the left side
 	variableIdentifier := ctx.Identifier().GetText()
+	var result any
+	if len(v.debug) > 0 && v.debug[0] {
+		result = variableIdentifier
+	} else {
+		scopes := v.CurrentScope.ToStringSlice()
+		variable, _ := v.Directory.ValidateVariableExists(scopes, variableIdentifier)
+		result = variable.VirtualDirection
+	}
 
 	// Generate assignment quadruple
-	v.generateQuadruple("=", expressionResult, "", variableIdentifier)
+	v.generateQuadruple("=", expressionResult, "", result)
 
 	return nil
 }
@@ -527,17 +535,15 @@ func (v *Visitor) VisitValue(ctx *generated.ValueContext) interface{} {
 		if len(v.debug) > 0 && v.debug[0] {
 			return variableName
 		}
-		scope := v.Directory.CurrentScope.Peek().(string)
-		_, virtualAddress, _ := v.Directory.LookupVariable(scope, variableName)
-		return virtualAddress
-
+		scope := v.CurrentScope.Peek().(string)
+		variableInfo, _ := v.Directory.LookupVariable(scope, variableName)
+		return variableInfo.VirtualDirection
 	} else {
 		constant := ctx.Constant().GetText()
 		if len(v.debug) > 0 && v.debug[0] {
 			return constant
 		}
-		virtualAddress := v.Directory.LookupConstant(constant)
+		virtualAddress, _ := v.Directory.LookupConstant(constant)
 		return virtualAddress
-
 	}
 }
