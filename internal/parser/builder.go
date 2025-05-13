@@ -243,17 +243,23 @@ func (d *DirectoryBuilder) validateVariable(value generated.IValueWithOptionalSi
 	}
 }
 
-// registerConstant processes a constant value and registers it in the memory manager and symbol table.
+// registerConstant extracts and registers a constant (integer or float), considering its sign.
 //
 // Parameters:
-//   - value (generated.IValueWithOptionalSignContext): The context containing the constant value to be registered.
+//   - value (generated.IValueWithOptionalSignContext): The context containing the constant, possibly with a sign.
 //
 // Behavior:
-//   - Extracts the constant value from the provided context.
-//   - If debugging is enabled, logs the constant being processed.
-//   - Determines the type of the constant (integer or float) and registers it in memory.
-//   - If an error occurs during registration, appends the error to the Errors list.
+//   - Determines whether the constant is negative by checking for a subtraction operator.
+//   - Extracts the raw constant value (e.g., integer or float).
+//   - Passes the constant value and its type to registerConstantInMemory for registration.
+//   - If an error occurs during registration, it is appended to the Errors list.
 func (d *DirectoryBuilder) registerConstant(value generated.IValueWithOptionalSignContext) {
+	var isNegative = false
+
+	if value.AdditiveOperator() != nil && value.AdditiveOperator().OP_SUBTRACT() != nil {
+		isNegative = true
+	}
+
 	constant := value.Value().Constant()
 
 	if d.Debug {
@@ -263,10 +269,10 @@ func (d *DirectoryBuilder) registerConstant(value generated.IValueWithOptionalSi
 	var err error
 	if constant.CONST_INT() != nil {
 		constantVal := constant.CONST_INT().GetText()
-		err = d.registerConstantInMemory(constantVal, memory.Integer)
+		err = d.registerConstantInMemory(constantVal, memory.Integer, isNegative)
 	} else {
 		constantVal := constant.CONST_FLOAT().GetText()
-		err = d.registerConstantInMemory(constantVal, memory.Float)
+		err = d.registerConstantInMemory(constantVal, memory.Float, isNegative)
 	}
 
 	if err != nil {
@@ -305,18 +311,26 @@ func (d *DirectoryBuilder) allocateVirtualMemory(dataType memory.DataType) (int,
 	return virtualAddress, nil
 }
 
-// registerConstantInMemory registers a constant value in the memory manager and symbol table
-//
-// This function allocates memory for constants and records them in the constant table.
-// Constants are stored in a dedicated memory segment.
+// registerConstantInMemory registers a constant in the constant memory segment and the symbol table.
 //
 // Parameters:
-//   - constantValue: The string representation of the constant
-//   - dataType: The data type of the constant (e.g., int, float, string)
+//   - constantValue (string): The textual representation of the constant value.
+//   - dataType (memory.DataType): The data type of the constant (e.g., Integer, Float).
+//   - isNegative (bool): Indicates whether the constant should be treated as negative.
 //
 // Returns:
-//   - error: An error if registration fails
-func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType) error {
+//   - error: An error if memory allocation or registration fails.
+//
+// Behavior:
+//   - Prepends a "-" to the constant value if isNegative is true.
+//   - Requests a virtual address from the memory manager for the constant segment.
+//   - Registers the constant in the symbol table using the assigned address.
+
+func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType, isNegative bool) error {
+	if isNegative {
+		constantValue = "-" + constantValue
+	}
+
 	// Allocate memory address in the constant segment
 	virtualAddress, err := d.MemoryManager.GetAddress(memory.Constant, dataType)
 	if err != nil {
@@ -324,7 +338,7 @@ func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataTy
 	}
 
 	// Register the constant in the directory/symbol table
-	err = d.Directory.AddConstant(constantValue, virtualAddress)
+	err = d.Directory.AddConstant(constantValue, dataType, virtualAddress)
 	if err != nil {
 		return fmt.Errorf("failed to register constant: %w", err)
 	}
