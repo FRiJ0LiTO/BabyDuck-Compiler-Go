@@ -101,16 +101,10 @@ func (d *DirectoryBuilder) EnterParameter(ctx *generated.ParameterContext) {
 func (d *DirectoryBuilder) ExitAssignment(ctx *generated.AssignmentContext) {
 	variableName := ctx.Identifier().GetText()
 
-	var scopes []string
-	temp := d.Directory.CurrentScope.Top
-	for temp != nil {
-		scopes = append(scopes, temp.Value.(string))
-		temp = temp.Next
-	}
-
-	err := d.Directory.ValidateVariableExists(scopes, variableName)
-	if err != nil {
-		d.Errors = append(d.Errors, err.Error())
+	scopes := d.Directory.CurrentScope.ToStringSlice()
+	_, exists := d.Directory.ValidateVariableExists(scopes, variableName)
+	if !exists {
+		d.Errors = append(d.Errors, "error: undefined variable ", variableName)
 	}
 
 	if ctx.Expression() != nil {
@@ -230,16 +224,10 @@ func (d *DirectoryBuilder) validateValueWithOptionalSign(value generated.IValueW
 func (d *DirectoryBuilder) validateVariable(value generated.IValueWithOptionalSignContext) {
 	variableName := value.Value().Identifier().GetText()
 
-	var scopes []string
-	temp := d.Directory.CurrentScope.Top
-	for temp != nil {
-		scopes = append(scopes, temp.Value.(string))
-		temp = temp.Next
-	}
-
-	err := d.Directory.ValidateVariableExists(scopes, variableName)
-	if err != nil {
-		d.Errors = append(d.Errors, err.Error())
+	scopes := d.Directory.CurrentScope.ToStringSlice()
+	_, exists := d.Directory.ValidateVariableExists(scopes, variableName)
+	if !exists {
+		d.Errors = append(d.Errors, "error: undefined variable ", variableName)
 	}
 }
 
