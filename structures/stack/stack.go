@@ -54,6 +54,23 @@ func (stack *Stack) Peek() any {
 	return stack.Top.Value
 }
 
+// ToStringSlice converts all stack values to a string slice.
+// The values are returned in order from top to bottom.
+// Note: This function assumes all values in the stack are strings.
+// It will panic if any value cannot be type-asserted to string.
+//
+// Returns:
+//   - []string: A slice containing all stack values as strings.
+func (stack *Stack) ToStringSlice() []string {
+	var result []string
+	current := stack.Top
+	for current != nil {
+		result = append(result, current.Value.(string))
+		current = current.Next
+	}
+	return result
+}
+
 // New creates and returns a new instance of the Stack struct.
 // This function initializes an empty stack with no elements.
 //
