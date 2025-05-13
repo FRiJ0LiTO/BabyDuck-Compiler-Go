@@ -1,11 +1,13 @@
 package semantic
 
+import "BabyDuck/internal/memory"
+
 // Cube represents a semantic cube used to determine the result type of operations
 // between different data types. It contains a nested map structure where the keys
 // are the left operand type, right operand type, and operator, and the values are
 // the resulting data type.
 type Cube struct {
-	semantics map[string]map[string]map[string]string // Nested map for semantic rules
+	semantics map[string]map[string]map[string]memory.DataType // Nested map for semantic rules
 }
 
 // NewSemanticCube creates and initializes a new semantic cube with predefined
@@ -16,7 +18,7 @@ type Cube struct {
 //   Cube: The newly created semantic cube.
 func NewSemanticCube() Cube {
 	cube := Cube{
-		semantics: map[string]map[string]map[string]string{
+		semantics: map[string]map[string]map[string]memory.DataType{
 			"int": {
 				"int": {
 					"+":  "int",
@@ -73,7 +75,7 @@ func NewSemanticCube() Cube {
 // Returns:
 //   string: The resulting type of the operation if found.
 //   bool: A boolean indicating whether the operation is valid (true if valid, false otherwise).
-func (sc *Cube) GetResultType(leftType string, rightType string, operator string) (string, bool) {
+func (sc *Cube) GetResultType(leftType string, rightType string, operator string) (memory.DataType, bool) {
 	if resultType, ok := sc.semantics[leftType][rightType][operator]; ok {
 		return resultType, true
 	}
