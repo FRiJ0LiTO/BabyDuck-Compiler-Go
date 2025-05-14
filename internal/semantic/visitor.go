@@ -7,6 +7,7 @@ import (
 	"BabyDuck/structures/stack"
 	"fmt"
 	"github.com/antlr4-go/antlr/v4"
+	"os"
 	"strconv"
 )
 
@@ -49,6 +50,9 @@ func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 // Each call increments the counter to ensure uniqueness
 // Returns: A string representing the new temporary variable (e.g., "t0", "t1", etc.)
 func (v *Visitor) newTemporaryVariable() any {
+	dataType := v.typesStack.Peek().(memory.DataType)
+	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", dataType)
+
 	if len(v.debug) > 0 && v.debug[0] {
 		// Create variable name with current counter value
 		temporaryVariable := "t" + strconv.Itoa(v.TempVariableCounter)
@@ -59,8 +63,6 @@ func (v *Visitor) newTemporaryVariable() any {
 		return temporaryVariable
 	}
 
-	dataType := v.typesStack.Peek().(memory.DataType)
-	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", dataType)
 	return virtualAddress
 }
 
@@ -299,12 +301,19 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} 
 	} else {
 		scopes := v.CurrentScope.ToStringSlice()
 		variable, _ := v.Directory.ValidateVariableExists(scopes, variableIdentifier)
+		if variable.VariableType != v.typesStack.Peek() {
+			fmt.Printf("Type error: cannot assign value of type '%s' to variable '%s' of type '%s'\n",
+				v.typesStack.Peek(), variableIdentifier, variable.VariableType)
+			os.Exit(1)
+		}
 		result = variable.VirtualDirection
 	}
 
 	// Generate assignment quadruple
 	virtualAddressOp := memory.IdentifyOperator("=")
 	v.generateQuadruple(virtualAddressOp, expressionResult, 0, result)
+	// Pop the result type of the expression from the types stack since it has been consumed by the assignment
+	v.typesStack.Pop()
 
 	return nil
 }
@@ -478,15 +487,17 @@ func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionC
 		operator := v.Visit(ctx.AdditiveOperator(i))
 		nextTerm := v.Visit(ctx.Term(i + 1))
 
-		rightOperandType := v.typesStack.Pop().(string)
-		leftOperandType := v.typesStack.Pop().(string)
+		rightOperandType := v.typesStack.Pop().(memory.DataType)
+		leftOperandType := v.typesStack.Pop().(memory.DataType)
 
 		resultType, ok := v.semanticCube.GetResultType(leftOperandType, rightOperandType, operator.(string))
 		if !ok {
 			// TODO: Handle error
-			fmt.Println("error")
+			fmt.Printf("Type mismatch error: cannot perform operation '%s' between types '%s' and '%s'\n",
+				operator, leftOperandType, rightOperandType)
+			os.Exit(1)
 		}
-		v.typesStack.Push(string(resultType))
+		v.typesStack.Push(resultType)
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
@@ -521,15 +532,17 @@ func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
 		operator := v.Visit(ctx.MultiplicativeOperator(i))
 		nextFactor := v.Visit(ctx.Factor(i + 1))
 
-		rightOperandType := v.typesStack.Pop().(string)
-		leftOperandType := v.typesStack.Pop().(string)
+		rightOperandType := v.typesStack.Pop().(memory.DataType)
+		leftOperandType := v.typesStack.Pop().(memory.DataType)
 
 		resultType, ok := v.semanticCube.GetResultType(leftOperandType, rightOperandType, operator.(string))
 		if !ok {
 			// TODO: Handle error
-			fmt.Println("error")
+			fmt.Printf("Type mismatch error: cannot perform operation '%s' between types '%s' and '%s'\n",
+				operator, leftOperandType, rightOperandType)
+			os.Exit(1)
 		}
-		v.typesStack.Push(string(resultType))
+		v.typesStack.Push(resultType)
 
 		// Create a temporary variable for the result
 		resultTemp := v.newTemporaryVariable()
@@ -594,7 +607,7 @@ func (v *Visitor) VisitValue(ctx *generated.ValueContext) any {
 		variableName := ctx.Identifier().GetText()
 		scope := v.CurrentScope.Peek().(string)
 		variableInfo, _ := v.Directory.LookupVariable(scope, variableName)
-		v.typesStack.Push(string(variableInfo.VariableType))
+		v.typesStack.Push(variableInfo.VariableType)
 		if len(v.debug) > 0 && v.debug[0] {
 			return variableName
 		}
@@ -602,7 +615,7 @@ func (v *Visitor) VisitValue(ctx *generated.ValueContext) any {
 	} else {
 		constant := ctx.Constant().GetText()
 		virtualAddress, constantType := v.Directory.LookupConstant(constant)
-		v.typesStack.Push(string(constantType))
+		v.typesStack.Push(constantType)
 		if len(v.debug) > 0 && v.debug[0] {
 			return constant
 		}
