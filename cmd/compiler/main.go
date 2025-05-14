@@ -54,7 +54,8 @@ func main() {
 		}
 	}
 
-	visitor := semantic.NewVisitor(symbolTable)
+	// Quadruples
+	visitor := semantic.NewVisitor(symbolTable, false)
 	visitor.Visit(parseTree)
 	visitor.PrintQuadruplesTable()
 }
