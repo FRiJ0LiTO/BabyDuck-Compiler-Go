@@ -9,7 +9,7 @@ import (
 type FunctionInformation struct {
 	VariableTable VariableTable
 	Parameters    []memory.DataType
-	Resources     map[memory.DataType]int
+	Resources     map[string]int
 }
 
 // FunctionDirectory manages the symbol tables for different scopes in a program.
@@ -36,7 +36,7 @@ func NewFunctionDirectory() *FunctionDirectory {
 	directory.FunctionsDirectory["program"] = &FunctionInformation{
 		VariableTable: make(VariableTable),
 		Parameters:    make([]memory.DataType, 0),
-		Resources:     make(map[memory.DataType]int),
+		Resources:     make(map[string]int),
 	}
 	directory.CurrentScope.Push("program")
 	return directory
@@ -61,15 +61,15 @@ func (fd *FunctionDirectory) AddFunction(functionName string) error {
 	fd.FunctionsDirectory[functionName] = &FunctionInformation{
 		VariableTable: make(VariableTable),
 		Parameters:    make([]memory.DataType, 0),
-		Resources:     make(map[memory.DataType]int),
+		Resources:     make(map[string]int),
 	}
 
 	return nil
 }
 
-func (fd *FunctionDirectory) AddResource(functionName string, variableType memory.DataType, count int) {
+func (fd *FunctionDirectory) AddResource(functionName string, variableType string, count int) {
 	if fd.FunctionsDirectory[functionName].Resources == nil {
-		fd.FunctionsDirectory[functionName].Resources = make(map[memory.DataType]int)
+		fd.FunctionsDirectory[functionName].Resources = make(map[string]int)
 	}
 	prevCounter := fd.FunctionsDirectory[functionName].Resources[variableType]
 	fd.FunctionsDirectory[functionName].Resources[variableType] = prevCounter + count
