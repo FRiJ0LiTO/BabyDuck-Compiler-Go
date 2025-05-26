@@ -16,7 +16,7 @@ const (
 const (
 	Integer DataType = "int"
 	Float   DataType = "float"
-	Boolean DataType = "boolean"
+	Boolean DataType = "bool"
 )
 
 // Range represents a memory range with a start, end, and the next available address.
