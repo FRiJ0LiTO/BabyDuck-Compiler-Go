@@ -46,6 +46,25 @@ func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 	}
 }
 
+// getTemporaryDataType returns the corresponding temporary data type for a given variable type.
+// This is used to track resource allocation for temporary variables in functions.
+//
+// Parameters:
+//   - varType: The original data type of the variable ("int", "float", or "bool")
+//
+// Returns:
+//   - memory.DataType: The corresponding temporary type ("TempInt", "TempFloat", or "TempBool")
+func getTemporaryDataType(varType memory.DataType) memory.DataType {
+	switch varType {
+	case "int":
+		return "TempInt"
+	case "float":
+		return "TempFloat"
+	default:
+		return "TempBool"
+	}
+}
+
 // newTemporaryVariable generates a new unique temporary variable name
 // Each call increments the counter to ensure uniqueness
 // Returns: A string representing the new temporary variable (e.g., "t0", "t1", etc.)
@@ -62,6 +81,9 @@ func (v *Visitor) newTemporaryVariable() any {
 	}
 	scope := v.CurrentScope.Peek().(string)
 	_ = v.Directory.AddVariable(temporaryVariable, dataType, virtualAddress, scope)
+
+	tempVarType := getTemporaryDataType(dataType)
+	v.Directory.AddResource(scope, tempVarType, 1)
 
 	return virtualAddress
 }
@@ -234,8 +256,18 @@ func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationCon
 	v.CurrentScope.Push(functionName)
 
 	// Generate function declaration quadruple
-	virtualAddress := memory.IdentifyOperator("FUNC")
-	v.generateQuadruple(virtualAddress, functionName, 0, 0)
+	params := ctx.AllParameter()
+	newParams := make([]memory.DataType, 0, len(ctx.AllCOMMA())+1)
+
+	for _, context := range params {
+		if context.Type_() != nil {
+			variableType := memory.DataType(context.Type_().GetText())
+			newParams = append(newParams, variableType)
+			v.Directory.AddResource(functionName, variableType, 1)
+		}
+	}
+
+	v.Directory.FunctionsDirectory[functionName].Parameters = newParams
 
 	// Process function body
 	return v.Visit(ctx.FunctionBody())
