@@ -14,10 +14,13 @@ const (
 )
 
 const (
-	Integer DataType = "int"
-	Float   DataType = "float"
-	Boolean DataType = "bool"
-	String  DataType = "string"
+	Integer     DataType = "int"
+	Float       DataType = "float"
+	Boolean     DataType = "bool"
+	String      DataType = "string"
+	TempInt     DataType = "TempInt"
+	TempFloat   DataType = "TempFloat"
+	TempBoolean DataType = "TempBoolean"
 )
 
 // Range represents a memory range with a start, end, and the next available address.
