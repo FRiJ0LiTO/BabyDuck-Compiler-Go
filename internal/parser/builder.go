@@ -242,11 +242,6 @@ func (d *DirectoryBuilder) validateVariable(value generated.IValueWithOptionalSi
 //   - Passes the constant value and its type to registerConstantInMemory for registration.
 //   - If an error occurs during registration, it is appended to the Errors list.
 func (d *DirectoryBuilder) registerConstant(value generated.IValueWithOptionalSignContext) {
-	var isNegative = false
-
-	if value.AdditiveOperator() != nil && value.AdditiveOperator().OP_SUBTRACT() != nil {
-		isNegative = true
-	}
 
 	constant := value.Value().Constant()
 
@@ -257,10 +252,10 @@ func (d *DirectoryBuilder) registerConstant(value generated.IValueWithOptionalSi
 	var err error
 	if constant.CONST_INT() != nil {
 		constantVal := constant.CONST_INT().GetText()
-		err = d.registerConstantInMemory(constantVal, memory.Integer, isNegative)
+		err = d.registerConstantInMemory(constantVal, memory.Integer)
 	} else {
 		constantVal := constant.CONST_FLOAT().GetText()
-		err = d.registerConstantInMemory(constantVal, memory.Float, isNegative)
+		err = d.registerConstantInMemory(constantVal, memory.Float)
 	}
 
 	if err != nil {
@@ -314,10 +309,7 @@ func (d *DirectoryBuilder) allocateVirtualMemory(dataType memory.DataType) (int,
 //   - Requests a virtual address from the memory manager for the constant segment.
 //   - Registers the constant in the symbol table using the assigned address.
 
-func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType, isNegative bool) error {
-	if isNegative {
-		constantValue = "-" + constantValue
-	}
+func (d *DirectoryBuilder) registerConstantInMemory(constantValue string, dataType memory.DataType) error {
 
 	// Allocate memory address in the constant segment
 	virtualAddress, err := d.MemoryManager.GetAddress(memory.Constant, dataType)
