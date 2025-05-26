@@ -17,6 +17,7 @@ const (
 	Integer DataType = "int"
 	Float   DataType = "float"
 	Boolean DataType = "bool"
+	String  DataType = "string"
 )
 
 // Range represents a memory range with a start, end, and the next available address.
@@ -91,7 +92,7 @@ func NewMemoryManager(conf Configuration) *Manager {
 
 	m.Ranges[Constant][Integer] = NewMemoryRange(conf.ConstIntStart, conf.ConstIntEnd)
 	m.Ranges[Constant][Float] = NewMemoryRange(conf.ConstFloatStart, conf.ConstFloatEnd)
-	m.Ranges[Constant][Boolean] = NewMemoryRange(conf.ConstBoolStart, conf.ConstBoolEnd)
+	m.Ranges[Constant][String] = NewMemoryRange(conf.ConstStringStart, conf.ConstStringEnd)
 
 	return m
 }
