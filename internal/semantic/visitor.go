@@ -57,11 +57,11 @@ func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 func getTemporaryDataType(varType memory.DataType) string {
 	switch varType {
 	case "int":
-		return "TempInt"
+		return "Tempint"
 	case "float":
-		return "TempFloat"
+		return "Tempfloat"
 	default:
-		return "TempBool"
+		return "Tempbool"
 	}
 }
 
