@@ -4,6 +4,7 @@ import (
 	"BabyDuck/internal/parser"
 	"BabyDuck/internal/semantic"
 	"BabyDuck/internal/symbol"
+	"BabyDuck/internal/virtualMachine"
 	"fmt"
 	"os"
 )
@@ -40,13 +41,6 @@ func main() {
 	newParser := parser.NewParser(string(sourceCode), false)
 	parseTree, symbolTable, errors := newParser.Parse()
 
-	// Test Semantic Cube
-	semanticCube := semantic.NewSemanticCube()
-	fmt.Println(semanticCube.GetResultType("int", "int", "+"))
-
-	fmt.Println("Function Directory built successfully")
-	printSymbolTable(symbolTable)
-
 	if len(errors) > 0 {
 		fmt.Println("Compilation errors:")
 		for _, err := range errors {
@@ -57,5 +51,8 @@ func main() {
 	// Quadruples
 	visitor := semantic.NewVisitor(symbolTable, false)
 	visitor.Visit(parseTree)
-	visitor.PrintQuadruplesTable()
+
+	// Virtual Machine
+	vm := virtualMachine.NewVirtualMachine(*symbolTable, visitor.Quadruples)
+	vm.Execute()
 }
