@@ -27,18 +27,14 @@ type VariableTable map[string]Variable
 //
 // Returns:
 //   - error: An error if the variable is already declared in the current scope or if no active scope exists.
-func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType, virtualAddress int) error {
-	if fd.CurrentScope.Height == 0 {
-		return fmt.Errorf("error: no active scope defined")
-	}
+func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType,
+	virtualAddress int, scope string) error {
 
-	// Get the current scope from the stack.
-	context := fd.CurrentScope.Peek()
-	varTable := fd.Directory[context.(string)]
+	varTable := fd.Directory[scope]
 
 	// Check if the variable already exists in the current scope.
 	if _, exists := varTable[name]; exists {
-		return fmt.Errorf("error: variable '%s' already declared in scope '%s'", name, context)
+		return fmt.Errorf("error: variable '%s' already declared in scope '%s'", name, scope)
 	}
 
 	// Add the new variable to the variable table.
@@ -90,4 +86,27 @@ func (fd *FunctionDirectory) LookupVariable(scope string, name string) (Variable
 
 	variable, varExists := varTable[name]
 	return variable, varExists
+}
+
+// LookupVariableByVirtualAddress searches for a variable by its virtual address in a specific scope.
+//
+// Parameters:
+//   - targetAddress (int): The virtual memory address to search for.
+//   - currentScope (string): The name of the scope to search in.
+//
+// Returns:
+//   - Variable: The Variable struct if found.
+//   - bool: A boolean indicating whether a variable with the given virtual address was found.
+func (fd *FunctionDirectory) LookupVariableByVirtualAddress(targetAddress int, currentScope string) (Variable, bool) {
+	scopeVariables, isScopeValid := fd.Directory[currentScope]
+	if !isScopeValid {
+		return Variable{}, false
+	}
+
+	for _, variableInfo := range scopeVariables {
+		if variableInfo.VirtualDirection == targetAddress {
+			return variableInfo, true
+		}
+	}
+	return Variable{}, false
 }
