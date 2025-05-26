@@ -53,15 +53,15 @@ func (v *Visitor) newTemporaryVariable() any {
 	dataType := v.typesStack.Peek().(memory.DataType)
 	virtualAddress, _ := v.MemoryManager.GetAddress("Temporal", dataType)
 
+	// Create variable name with current counter value
+	temporaryVariable := "t" + strconv.Itoa(v.TempVariableCounter)
+	v.TempVariableCounter++
 	if len(v.debug) > 0 && v.debug[0] {
-		// Create variable name with current counter value
-		temporaryVariable := "t" + strconv.Itoa(v.TempVariableCounter)
-
-		// Increment counter for next call
-		v.TempVariableCounter++
 
 		return temporaryVariable
 	}
+	scope := v.CurrentScope.Peek().(string)
+	_ = v.Directory.AddVariable(temporaryVariable, dataType, virtualAddress, scope)
 
 	return virtualAddress
 }
@@ -90,7 +90,7 @@ func (v *Visitor) generateQuadruple(operator interface{}, leftOperand interface{
 // Parameters:
 //   - index: The position of the quadruple to update
 //   - result: The new result value to set in the quadruple
-func (v *Visitor) updateQuadruple(index int, result string) {
+func (v *Visitor) updateQuadruple(index int, result int) {
 	quadruple := v.Quadruples[index]
 	quadruple.Result = result
 	v.Quadruples[index] = quadruple
@@ -186,6 +186,7 @@ func (v *Visitor) Visit(tree antlr.ParseTree) interface{} {
 func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 	// Push program scope to the stack
 	v.CurrentScope.Push("program")
+	v.JumpsStack.Push(len(v.Quadruples))
 
 	// Generate program start quadruple
 	virtualAddressOpPro := memory.IdentifyOperator("PROGRAM")
@@ -217,7 +218,11 @@ func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 
 // VisitProgramBody processes the main code block of the program
 func (v *Visitor) VisitProgramBody(ctx *generated.ProgramBodyContext) interface{} {
-	return v.Visit(ctx.CodeBlock())
+	if ctx.MAIN() != nil {
+		v.updateQuadruple(v.JumpsStack.Pop().(int), len(v.Quadruples))
+		return v.Visit(ctx.CodeBlock())
+	}
+	return nil
 }
 
 // VisitFunctionDeclaration processes function declarations
@@ -347,7 +352,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 		// Update the GOTOF to jump to the beginning of the else block
-		v.updateQuadruple(falseJumpPosition.(int), strconv.Itoa(len(v.Quadruples)))
+		v.updateQuadruple(falseJumpPosition.(int), len(v.Quadruples))
 
 		// Process the code block within the else statement
 		v.Visit(ctx.ElseBlock().CodeBlock())
@@ -357,7 +362,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 	if ctx.SEMICOLON() != nil {
 		// Get the last jump position (either from if or else) and update it
 		lastJumpPosition := v.JumpsStack.Pop()
-		v.updateQuadruple(lastJumpPosition.(int), strconv.Itoa(len(v.Quadruples)))
+		v.updateQuadruple(lastJumpPosition.(int), len(v.Quadruples))
 	}
 	return nil
 }
@@ -387,7 +392,7 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 		returnToConditionPosition := v.JumpsStack.Pop()
 
 		// Update the conditional jump to point to after the loop
-		v.updateQuadruple(exitJumpPosition.(int), strconv.Itoa(len(v.Quadruples)+1))
+		v.updateQuadruple(exitJumpPosition.(int), len(v.Quadruples))
 
 		// Add a jump back to the condition evaluation
 		virtualAddressOpGoto := memory.IdentifyOperator("GOTO")
@@ -428,9 +433,10 @@ func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) inte
 			expressionResult := v.Visit(printable.Expression())
 			v.generateQuadruple(virtualAddressOpPrint, 0, 0, expressionResult)
 		} else {
-			// If it's a literal, print it directly
+			// If it's a literal, store it
 			literalValue := ctx.Printable(i).GetText()
-			v.generateQuadruple(virtualAddressOpPrint, 0, 0, literalValue)
+			virtualAddress, _ := v.Directory.LookupConstant(literalValue)
+			v.generateQuadruple(virtualAddressOpPrint, 0, 0, virtualAddress)
 		}
 	}
 	return nil
@@ -449,6 +455,16 @@ func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) interface{} 
 
 		// Process the right-hand arithmetic expression
 		rightOperand := v.Visit(ctx.RelationalExpression().ArithmeticExpression())
+
+		rightOperandType := v.typesStack.Pop().(memory.DataType)
+		leftOperandType := v.typesStack.Pop().(memory.DataType)
+		resultType, ok := v.semanticCube.GetResultType(leftOperandType, rightOperandType, relationalOperator.(string))
+
+		if !ok {
+			fmt.Println("ERROR", resultType, rightOperandType, leftOperandType)
+		}
+
+		v.typesStack.Push(resultType)
 
 		// Create a temporary variable to store the result
 		resultTemp := v.newTemporaryVariable()
