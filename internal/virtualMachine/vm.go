@@ -28,7 +28,8 @@ type VirtualMachine struct {
 //   - *VirtualMachine: Pointer to the newly created virtual machine
 func NewVirtualMachine(functionsDirectory symbol.FunctionDirectory, quadruples []semantic.Quadruple) *VirtualMachine {
 	return &VirtualMachine{
-		Memory:             NewMemory(memory.DefaultMemoryConfig, functionsDirectory.Constants),
+		Memory: NewMemory(functionsDirectory.FunctionsDirectory["program"].Resources,
+			memory.DefaultMemoryConfig, functionsDirectory.Constants),
 		FunctionsDirectory: functionsDirectory,
 		quadruples:         quadruples,
 		executionStack:     stack.New(),
@@ -122,13 +123,20 @@ func (vm *VirtualMachine) executeNegation(instruction semantic.Quadruple) {
 	operandAddress := instruction.LeftOperand.(int)
 	resultAddress := instruction.Result.(int)
 
-	operandValue, _ := vm.Memory.Get(operandAddress)
+	operandValue, err := vm.Memory.Get(operandAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting operand for negation: %v", err))
+	}
+
 	negatedResult := vm.negateValue(operandValue)
 
-	_ = vm.Memory.Set(resultAddress, negatedResult)
+	if err := vm.Memory.Set(resultAddress, negatedResult); err != nil {
+		panic(fmt.Sprintf("Error setting negation result: %v", err))
+	}
 }
 
 // executeArithmetic performs binary arithmetic operations (ADD, SUB, MUL, DIV).
+// Now with proper type handling that preserves types when possible.
 //
 // Parameters:
 //   - instruction: The arithmetic quadruple containing operands and result addresses
@@ -137,54 +145,188 @@ func (vm *VirtualMachine) executeArithmetic(instruction semantic.Quadruple) {
 	rightOperandAddress := instruction.RightOperand.(int)
 	resultAddress := instruction.Result.(int)
 
-	leftValue, _ := vm.Memory.Get(leftOperandAddress)
-	rightValue, _ := vm.Memory.Get(rightOperandAddress)
-
-	leftAsFloat := vm.toFloat64(leftValue)
-	rightAsFloat := vm.toFloat64(rightValue)
-
-	var calculationResult float64
-	switch instruction.Operator.(memory.Operator) {
-	case memory.ADD:
-		calculationResult = leftAsFloat + rightAsFloat
-	case memory.SUB:
-		calculationResult = leftAsFloat - rightAsFloat
-	case memory.MUL:
-		calculationResult = leftAsFloat * rightAsFloat
-	case memory.DIV:
-		calculationResult = leftAsFloat / rightAsFloat
-	default:
-		panic(fmt.Sprintf("Unhandled arithmetic operator: %v", instruction.Operator))
+	leftValue, err := vm.Memory.Get(leftOperandAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting left operand: %v", err))
 	}
 
-	_ = vm.Memory.Set(resultAddress, calculationResult)
+	rightValue, err := vm.Memory.Get(rightOperandAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting right operand: %v", err))
+	}
+
+	operator := instruction.Operator.(memory.Operator)
+
+	// Use type-safe arithmetic operation
+	result, err := vm.performArithmetic(leftValue, rightValue, operator)
+	if err != nil {
+		panic(fmt.Sprintf("Arithmetic operation failed: %v", err))
+	}
+
+	if err := vm.Memory.Set(resultAddress, result); err != nil {
+		panic(fmt.Sprintf("Error setting arithmetic result: %v", err))
+	}
+}
+
+// performArithmetic handles arithmetic operations while preserving types when appropriate
+func (vm *VirtualMachine) performArithmetic(left, right interface{}, operator memory.Operator) (interface{}, error) {
+	// Handle int + int = int operations
+	if leftInt, leftOk := left.(int); leftOk {
+		if rightInt, rightOk := right.(int); rightOk {
+			return vm.performIntArithmetic(leftInt, rightInt, operator)
+		}
+		// int + float = float
+		if rightFloat, rightOk := right.(float64); rightOk {
+			return vm.performFloatArithmetic(float64(leftInt), rightFloat, operator)
+		}
+	}
+
+	// Handle float + anything = float operations
+	if leftFloat, leftOk := left.(float64); leftOk {
+		if rightFloat, rightOk := right.(float64); rightOk {
+			return vm.performFloatArithmetic(leftFloat, rightFloat, operator)
+		}
+		if rightInt, rightOk := right.(int); rightOk {
+			return vm.performFloatArithmetic(leftFloat, float64(rightInt), operator)
+		}
+	}
+
+	return nil, fmt.Errorf("unsupported operand types for arithmetic: %T and %T", left, right)
+}
+
+// performIntArithmetic handles arithmetic operations between two integers
+func (vm *VirtualMachine) performIntArithmetic(left, right int, operator memory.Operator) (interface{}, error) {
+	switch operator {
+	case memory.ADD:
+		result := left + right
+		return result, nil
+	case memory.SUB:
+		result := left - right
+		return result, nil
+	case memory.MUL:
+		result := left * right
+		return result, nil
+	case memory.DIV:
+		if right == 0 {
+			return nil, fmt.Errorf("division by zero")
+		}
+		// Check if division is exact to decide between int or float result
+		if left%right == 0 {
+			result := left / right
+			return result, nil
+		} else {
+			result := float64(left) / float64(right)
+			return result, nil
+		}
+	default:
+		return nil, fmt.Errorf("unsupported operator for integers: %v", operator)
+	}
+}
+
+// performFloatArithmetic handles arithmetic operations between floating-point numbers
+func (vm *VirtualMachine) performFloatArithmetic(left, right float64, operator memory.Operator) (interface{}, error) {
+	switch operator {
+	case memory.ADD:
+		result := left + right
+		return result, nil
+	case memory.SUB:
+		result := left - right
+		return result, nil
+	case memory.MUL:
+		result := left * right
+		return result, nil
+	case memory.DIV:
+		if right == 0.0 {
+			return nil, fmt.Errorf("division by zero")
+		}
+		result := left / right
+		return result, nil
+	default:
+		return nil, fmt.Errorf("unsupported operator for floats: %v", operator)
+	}
 }
 
 // executeComparison performs relational comparison operations (>, <, !=).
+// Improved to handle type-safe comparisons
 //
 // Parameters:
 //   - instruction: The comparison quadruple containing operands and result addresses
 func (vm *VirtualMachine) executeComparison(instruction semantic.Quadruple) {
-	leftValue, _ := vm.Memory.Get(instruction.LeftOperand.(int))
-	rightValue, _ := vm.Memory.Get(instruction.RightOperand.(int))
-	resultAddress := instruction.Result.(int)
-
-	leftAsFloat := vm.toFloat64(leftValue)
-	rightAsFloat := vm.toFloat64(rightValue)
-
-	var comparisonResult bool
-	switch instruction.Operator.(memory.Operator) {
-	case memory.GREATER:
-		comparisonResult = leftAsFloat > rightAsFloat
-	case memory.LESS:
-		comparisonResult = leftAsFloat < rightAsFloat
-	case memory.NOTEQUAL:
-		comparisonResult = leftAsFloat != rightAsFloat
-	default:
-		panic(fmt.Sprintf("Unhandled comparison operator: %v", instruction.Operator))
+	leftValue, err := vm.Memory.Get(instruction.LeftOperand.(int))
+	if err != nil {
+		panic(fmt.Sprintf("Error getting left operand for comparison: %v", err))
 	}
 
-	_ = vm.Memory.Set(resultAddress, comparisonResult)
+	rightValue, err := vm.Memory.Get(instruction.RightOperand.(int))
+	if err != nil {
+		panic(fmt.Sprintf("Error getting right operand for comparison: %v", err))
+	}
+
+	resultAddress := instruction.Result.(int)
+
+	comparisonResult, err := vm.performComparison(leftValue, rightValue, instruction.Operator.(memory.Operator))
+	if err != nil {
+		panic(fmt.Sprintf("Comparison operation failed: %v", err))
+	}
+
+	if err := vm.Memory.Set(resultAddress, comparisonResult); err != nil {
+		panic(fmt.Sprintf("Error setting comparison result: %v", err))
+	}
+}
+
+// performComparison handles comparison operations with proper type handling
+func (vm *VirtualMachine) performComparison(left, right interface{}, operator memory.Operator) (bool, error) {
+	// Handle int-int comparisons
+	if leftInt, leftOk := left.(int); leftOk {
+		if rightInt, rightOk := right.(int); rightOk {
+			return vm.compareInts(leftInt, rightInt, operator), nil
+		}
+		// int-float comparison: promote int to float
+		if rightFloat, rightOk := right.(float64); rightOk {
+			return vm.compareFloats(float64(leftInt), rightFloat, operator), nil
+		}
+	}
+
+	// Handle float comparisons
+	if leftFloat, leftOk := left.(float64); leftOk {
+		if rightFloat, rightOk := right.(float64); rightOk {
+			return vm.compareFloats(leftFloat, rightFloat, operator), nil
+		}
+		// float-int comparison: promote int to float
+		if rightInt, rightOk := right.(int); rightOk {
+			return vm.compareFloats(leftFloat, float64(rightInt), operator), nil
+		}
+	}
+
+	return false, fmt.Errorf("unsupported operand types for comparison: %T and %T", left, right)
+}
+
+// compareInts performs comparison operations between integers
+func (vm *VirtualMachine) compareInts(left, right int, operator memory.Operator) bool {
+	switch operator {
+	case memory.GREATER:
+		return left > right
+	case memory.LESS:
+		return left < right
+	case memory.NOTEQUAL:
+		return left != right
+	default:
+		panic(fmt.Sprintf("Unhandled comparison operator: %v", operator))
+	}
+}
+
+// compareFloats performs comparison operations between floating-point numbers
+func (vm *VirtualMachine) compareFloats(left, right float64, operator memory.Operator) bool {
+	switch operator {
+	case memory.GREATER:
+		return left > right
+	case memory.LESS:
+		return left < right
+	case memory.NOTEQUAL:
+		return left != right
+	default:
+		panic(fmt.Sprintf("Unhandled comparison operator: %v", operator))
+	}
 }
 
 // executeConditionalJump performs conditional jump based on boolean condition.
@@ -196,15 +338,25 @@ func (vm *VirtualMachine) executeComparison(instruction semantic.Quadruple) {
 //   - bool: true if condition is met (continue normal execution), false if jumped
 func (vm *VirtualMachine) executeConditionalJump(instruction semantic.Quadruple) bool {
 	conditionAddress := instruction.LeftOperand.(int)
-	conditionValue, _ := vm.Memory.Get(conditionAddress)
-
-	// GOTOF: Jump if condition is false
-	if conditionValue != true {
-		targetAddress := instruction.Result.(int)
-		vm.programCounter = targetAddress
+	conditionValue, err := vm.Memory.Get(conditionAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting condition for jump: %v", err))
 	}
 
-	return conditionValue.(bool)
+	// Ensure we have a boolean value
+	conditionBool, ok := conditionValue.(bool)
+	if !ok {
+		panic(fmt.Sprintf("Expected bool for conditional jump, got %T", conditionValue))
+	}
+
+	// GOTOF: Jump if condition is false
+	if !conditionBool {
+		targetAddress := instruction.Result.(int)
+		vm.programCounter = targetAddress
+		return false // Don't increment PC
+	}
+
+	return true // Continue normal execution
 }
 
 // executeAssignment performs variable assignment operation.
@@ -215,9 +367,14 @@ func (vm *VirtualMachine) executeAssignment(instruction semantic.Quadruple) {
 	sourceAddress := instruction.LeftOperand.(int)
 	destinationAddress := instruction.Result.(int)
 
-	sourceValue, _ := vm.Memory.Get(sourceAddress)
+	sourceValue, err := vm.Memory.Get(sourceAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting source value for assignment: %v", err))
+	}
 
-	_ = vm.Memory.Set(destinationAddress, sourceValue)
+	if err := vm.Memory.Set(destinationAddress, sourceValue); err != nil {
+		panic(fmt.Sprintf("Error setting assignment value: %v", err))
+	}
 }
 
 // executePrint outputs a value to the console.
@@ -226,32 +383,15 @@ func (vm *VirtualMachine) executeAssignment(instruction semantic.Quadruple) {
 //   - instruction: The PRINT quadruple containing the address of value to print
 func (vm *VirtualMachine) executePrint(instruction semantic.Quadruple) {
 	valueAddress := instruction.Result.(int)
-	valueToPrint, _ := vm.Memory.Get(valueAddress)
-	fmt.Println(valueToPrint)
-}
-
-// toFloat64 converts various numeric types to float64 for uniform arithmetic operations.
-//
-// Parameters:
-//   - value: The value to convert (int, float64, etc.)
-//
-// Returns:
-//   - float64: The converted floating-point value
-//
-// Panics:
-//   - If the value cannot be converted to a numeric type
-func (vm *VirtualMachine) toFloat64(value interface{}) float64 {
-	switch typedValue := value.(type) {
-	case int:
-		return float64(typedValue)
-	case float64:
-		return typedValue
-	default:
-		panic(fmt.Sprintf("Cannot convert type %T to numeric value", typedValue))
+	valueToPrint, err := vm.Memory.Get(valueAddress)
+	if err != nil {
+		panic(fmt.Sprintf("Error getting value to print: %v", err))
 	}
+
+	fmt.Printf("Output: %v\n", valueToPrint)
 }
 
-// negateValue performs unary negation on numeric values.
+// negateValue performs unary negation on numeric values while preserving type.
 //
 // Parameters:
 //   - value: The value to negate (int, float64, etc.)
