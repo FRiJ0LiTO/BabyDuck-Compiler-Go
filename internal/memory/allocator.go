@@ -26,8 +26,8 @@ type Configuration struct {
 	ConstIntEnd      int
 	ConstFloatStart  int
 	ConstFloatEnd    int
-	ConstBoolStart   int
-	ConstBoolEnd     int
+	ConstStringStart   int
+	ConstStringEnd     int
 }
 
 type Operator int
@@ -84,8 +84,8 @@ var DefaultMemoryConfig = Configuration{
 	ConstIntEnd:      10999,
 	ConstFloatStart:  11000,
 	ConstFloatEnd:    11999,
-	ConstBoolStart:   12000,
-	ConstBoolEnd:     12999,
+	ConstStringStart:   12000,
+	ConstStringEnd:     12999,
 }
 
 func IdentifyOperator(operator string) Operator {
