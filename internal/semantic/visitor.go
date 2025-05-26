@@ -329,13 +329,13 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 	// Process if block
 	if ctx.IfBlock() != nil {
 		// Evaluate the condition expression
-		v.Visit(ctx.IfBlock().ParenthesizedExpression())
+		conditionResult := v.Visit(ctx.IfBlock().ParenthesizedExpression())
 
 		// Save position for GOTOF instruction that will be filled later
 		jumpPosition := len(v.Quadruples)
 		v.JumpsStack.Push(jumpPosition)
 		virtualAddressOp := memory.IdentifyOperator("GOTOF")
-		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
+		v.generateQuadruple(virtualAddressOp, conditionResult, 0, 0)
 
 		// Process the code block within the if statement
 		v.Visit(ctx.IfBlock().CodeBlock())
@@ -352,7 +352,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 		// Update the GOTOF to jump to the beginning of the else block
-		v.updateQuadruple(falseJumpPosition.(int), len(v.Quadruples))
+		v.updateQuadruple(falseJumpPosition.(int), len(v.Quadruples)+1)
 
 		// Process the code block within the else statement
 		v.Visit(ctx.ElseBlock().CodeBlock())
@@ -362,7 +362,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 	if ctx.SEMICOLON() != nil {
 		// Get the last jump position (either from if or else) and update it
 		lastJumpPosition := v.JumpsStack.Pop()
-		v.updateQuadruple(lastJumpPosition.(int), len(v.Quadruples))
+		v.updateQuadruple(lastJumpPosition.(int), len(v.Quadruples)+1)
 	}
 	return nil
 }
@@ -376,13 +376,13 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 		v.JumpsStack.Push(loopStartPosition)
 
 		// Evaluate the loop condition
-		v.Visit(ctx.ParenthesizedExpression())
+		conditionResult := v.Visit(ctx.ParenthesizedExpression())
 
 		// Save position for GOTOF that will exit the loop when condition is false
 		conditionalJumpPosition := len(v.Quadruples)
 		v.JumpsStack.Push(conditionalJumpPosition)
 		virtualAddressOpGotoF := memory.IdentifyOperator("GOTOF")
-		v.generateQuadruple(virtualAddressOpGotoF, 0, 0, 0)
+		v.generateQuadruple(virtualAddressOpGotoF, conditionResult, 0, 0)
 
 		// Process the loop body
 		v.Visit(ctx.CodeBlock())
@@ -392,7 +392,7 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 		returnToConditionPosition := v.JumpsStack.Pop()
 
 		// Update the conditional jump to point to after the loop
-		v.updateQuadruple(exitJumpPosition.(int), len(v.Quadruples))
+		v.updateQuadruple(exitJumpPosition.(int), len(v.Quadruples)+1)
 
 		// Add a jump back to the condition evaluation
 		virtualAddressOpGoto := memory.IdentifyOperator("GOTO")
