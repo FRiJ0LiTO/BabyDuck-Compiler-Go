@@ -1,64 +1,57 @@
 program BabyDuck;
 
 var
-    globalCounter, counter, loopIndex: int;
-    totalSum, averageResult, temporaryValue: float;
+  globalCounter, counter, loopIndex, index: int;
+  totalSum, averageResult, temporaryValue: float;
 
-void processInputs(floatInput: float, intInput: int) [
+void process(floatInput: float, intInput: int) [
     var
         sumResult, rowIndex, columnIndex: int;
         computedFloat: float;
 
     {
-        rowIndex = 1;
-        columnIndex = 2;
+        rowIndex = 1000;
+        columnIndex = 200;
         sumResult = 0;
         computedFloat = 3.0;
-        globalCounter = floatInput + 1;
-    }
-];
-
-void processSecondaryInputs(floatInput: float, intInput: int) [
-    var
-        sumResult, rowIndex, columnIndex: int;
-        computedFloat: float;
-
-    {
-        rowIndex = 1;
-        columnIndex = 2;
-        sumResult = 0;
-        computedFloat = 3.0;
-        globalCounter = floatInput + 1;
-        pi = 10;
+        globalCounter = 45 * 67 + 10;
     }
 ];
 
 main
 {
-    totalSum = 1 + 2;
+    print("Hola Mundo")
+    totalSum = 1 + 2 * 5 + 1.5 * 90 / 80;
     globalCounter = (1 + 2) / 3;
 
     counter = 1;
 
-    print(totalSum > abc);
+    print(totalSum > 60);
     print(totalSum + 45);
+    print(10, 40,  45 * 67 + 10);
 
-    if (yy > 10) {
+    print("totalSum is", totalSum);
+    if (totalSum > 10 + 70) {
         print("counter is 1");
     } else {
         print("counter is not 1");
     };
 
-    loopIndex = 2;
-
-    while (zz < 10) do {
-        loopIndex = loopIndex + 1;
-        print(loopIndex);
+    if (totalSum != 0) {
+        print("Hola Mundo");
     };
 
+    loopIndex = -2 - -19;
+    print(loopIndex < 34);
 
-    processInputs(1.0, loopIndex);
-    processSecondaryInputs(1.0, 1);
+    index = 0
+    while (index < 10) do {
+        print(index + 1);
+        index = index + 1;
+    };
+
+    process(1.0 * 30, loopIndex);
+    processSec(1.0, 1);
 }
 
 end
