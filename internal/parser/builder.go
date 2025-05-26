@@ -52,9 +52,10 @@ func (d *DirectoryBuilder) ExitFunctionDeclaration(_ *generated.FunctionDeclarat
 // ExitVarDecl is called when exiting a variable declaration node in the parse tree.
 // It registers all variables declared in this statement with their associated type.
 func (d *DirectoryBuilder) ExitVarDecl(ctx *generated.VarDeclContext) {
-	variableType := ctx.Type_().GetText()
+	variableType := memory.DataType(ctx.Type_().GetText())
+	ids := ctx.IdList().AllID()
 
-	for _, idNode := range ctx.IdList().AllID() {
+	for _, idNode := range ids {
 		variableName := idNode.GetText()
 
 		virtualAddress, err := d.allocateVirtualMemory(memory.DataType(variableType))
@@ -66,12 +67,15 @@ func (d *DirectoryBuilder) ExitVarDecl(ctx *generated.VarDeclContext) {
 		scope := d.Directory.CurrentScope.Peek().(string)
 
 		// Register Variable
-		err = d.Directory.AddVariable(variableName, memory.DataType(variableType), virtualAddress, scope)
+		err = d.Directory.AddVariable(variableName, variableType, virtualAddress, scope)
 		if err != nil {
 			// Variable already defined in current scope"
 			d.Errors = append(d.Errors, err.Error())
 		}
 	}
+
+	functionName := d.Directory.CurrentScope.Peek().(string)
+	d.Directory.AddResource(functionName, variableType, len(ids))
 }
 
 // EnterParameter is called when entering a parameter declaration node in the parse tree.
