@@ -1,0 +1,19 @@
+program CompilerV1;
+
+var n, factorial, i: int;
+
+main
+{
+    n = 5;
+    factorial = 1;
+
+    i = n;
+    while (i > 1) do {
+        factorial = factorial * i;
+        i = i - 1;
+    };
+
+    print(factorial);
+}
+
+end
