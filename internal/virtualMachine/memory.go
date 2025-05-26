@@ -7,155 +7,307 @@ import (
 	"strconv"
 )
 
-// TypedValue represents a value with its associated data type.
-// This structure is used for type checking and validation during execution.
-type TypedValue struct {
-	Value    interface{}     // The actual stored value
-	DataType memory.DataType // The type of the stored value (int, float, etc.)
+// ResourceType defines the different types of memory segments
+type ResourceType string
+
+const (
+	GlobalInt   ResourceType = "Globalint"
+	GlobalFloat ResourceType = "Globalfloat"
+	LocalInt    ResourceType = "Localint"
+	LocalFloat  ResourceType = "Localfloat"
+	TempInt     ResourceType = "Tempint"
+	TempFloat   ResourceType = "Tempfloat"
+	TempBool    ResourceType = "Tempbool"
+)
+
+// DynamicResources manages memory slices dynamically based on configuration
+type DynamicResources struct {
+	slices map[ResourceType]interface{}
 }
 
-// Memory represents the virtual machine's memory management system.
-// It handles storage, retrieval, and validation of variables and constants
-// across different memory segments (global, local, temporal, constant).
+// NewDynamicResources creates a new dynamic resources manager
+func NewDynamicResources(resources map[string]int) *DynamicResources {
+	dr := &DynamicResources{
+		slices: make(map[ResourceType]interface{}),
+	}
+
+	// Map memory.DataType to ResourceType and create slices dynamically
+	typeMapping := map[string]ResourceType{
+		"Globalint":   GlobalInt,
+		"Globalfloat": GlobalFloat,
+		"Localint":    LocalInt,
+		"Localfloat":  LocalFloat,
+		"Tempint":     TempInt,
+		"Tempfloat":   TempFloat,
+		"Tempbool":    TempBool,
+	}
+
+	for dataType, count := range resources {
+		if resourceType, exists := typeMapping[dataType]; exists {
+			dr.createSliceForType(resourceType, count)
+		}
+	}
+
+	return dr
+}
+
+// createSliceForType creates a slice of the appropriate type with given capacity
+func (dr *DynamicResources) createSliceForType(resourceType ResourceType, capacity int) {
+	switch resourceType {
+	case GlobalInt, LocalInt, TempInt:
+		dr.slices[resourceType] = make([]int, 0, capacity)
+	case GlobalFloat, LocalFloat, TempFloat:
+		dr.slices[resourceType] = make([]float64, 0, capacity)
+	case TempBool:
+		dr.slices[resourceType] = make([]bool, 0, capacity)
+	}
+}
+
+// GetInts Type-safe getters
+func (dr *DynamicResources) GetInts(resourceType ResourceType) []int {
+	if slice, exists := dr.slices[resourceType]; exists {
+		if intSlice, ok := slice.([]int); ok {
+			return intSlice
+		}
+	}
+	return nil
+}
+
+func (dr *DynamicResources) GetFloats(resourceType ResourceType) []float64 {
+	if slice, exists := dr.slices[resourceType]; exists {
+		if floatSlice, ok := slice.([]float64); ok {
+			return floatSlice
+		}
+	}
+	return nil
+}
+
+func (dr *DynamicResources) GetBools(resourceType ResourceType) []bool {
+	if slice, exists := dr.slices[resourceType]; exists {
+		if boolSlice, ok := slice.([]bool); ok {
+			return boolSlice
+		}
+	}
+	return nil
+}
+
+// Memory represents the virtual machine's memory management system
 type Memory struct {
-	variableStorage map[int]interface{}     // Runtime storage for variables and temporaries
-	constantsTable  map[int]symbol.Constant // Read-only constants with their metadata
-	memoryConfig    memory.Configuration    // Memory layout configuration (address ranges)
+	VariableStorage *DynamicResources
+	constantsTable  map[int]symbol.Constant
+	memoryConfig    memory.Configuration
 }
 
-// NewMemory creates and initializes a new memory management instance.
-//
-// Parameters:
-//   - config: Memory configuration defining address ranges for different variable types
-//   - constants: Pre-defined constants table from the compilation phase
-//
-// Returns:
-//   - *Memory: Pointer to the newly created memory manager
-func NewMemory(config memory.Configuration, constants map[int]symbol.Constant) *Memory {
+// AddressInfo contains information about a memory address
+type AddressInfo struct {
+	ResourceType ResourceType
+	Index        int
+	IsValid      bool
+}
+
+// NewMemory creates and initializes a new memory management instance
+func NewMemory(resources map[string]int, config memory.Configuration,
+	constants map[int]symbol.Constant) *Memory {
 	return &Memory{
-		variableStorage: make(map[int]interface{}),
+		VariableStorage: NewDynamicResources(resources),
 		constantsTable:  constants,
 		memoryConfig:    config,
 	}
 }
 
-// Set stores a value at the specified memory address.
-// Validates the address before storing to prevent memory corruption.
-//
-// Parameters:
-//   - address: Virtual memory address where the value should be stored
-//   - value: The value to store (can be any type: int, float64, bool, etc.)
-//
-// Returns:
-//   - error: nil if successful, error if address is invalid
-//
-// Errors:
-//   - Returns error if the address is outside valid memory ranges
+// getAddressInfo determines which resource type and index an address corresponds to
+func (m *Memory) getAddressInfo(address int) AddressInfo {
+	config := m.memoryConfig
+
+	switch {
+	case address >= config.GlobalIntStart && address <= config.GlobalIntEnd:
+		return AddressInfo{
+			ResourceType: GlobalInt,
+			Index:        address - config.GlobalIntStart,
+			IsValid:      true,
+		}
+	case address >= config.LocalIntStart && address <= config.LocalIntEnd:
+		return AddressInfo{
+			ResourceType: LocalInt,
+			Index:        address - config.LocalIntStart,
+			IsValid:      true,
+		}
+	case address >= config.LocalFloatStart && address <= config.LocalFloatEnd:
+		return AddressInfo{
+			ResourceType: LocalFloat,
+			Index:        address - config.LocalFloatStart,
+			IsValid:      true,
+		}
+	case address >= config.GlobalFloatStart && address <= config.GlobalFloatEnd:
+		return AddressInfo{
+			ResourceType: GlobalFloat,
+			Index:        address - config.GlobalFloatStart,
+			IsValid:      true,
+		}
+	case address >= config.TempIntStart && address <= config.TempIntEnd:
+		return AddressInfo{
+			ResourceType: TempInt,
+			Index:        address - config.TempIntStart,
+			IsValid:      true,
+		}
+	case address >= config.TempFloatStart && address <= config.TempFloatEnd:
+		return AddressInfo{
+			ResourceType: TempFloat,
+			Index:        address - config.TempFloatStart,
+			IsValid:      true,
+		}
+	case address >= config.TempBoolStart && address <= config.TempBoolEnd:
+		return AddressInfo{
+			ResourceType: TempBool,
+			Index:        address - config.TempBoolStart,
+			IsValid:      true,
+		}
+	case address >= config.ConstIntStart && address <= config.ConstIntEnd:
+		return AddressInfo{
+			IsValid: true,
+		}
+	case address >= config.ConstFloatStart && address <= config.ConstFloatEnd:
+		return AddressInfo{
+			IsValid: true,
+		}
+	case address >= config.ConstStringStart && address <= config.ConstStringEnd:
+		return AddressInfo{
+			IsValid: true,
+		}
+	default:
+		return AddressInfo{IsValid: false}
+	}
+}
+
+// Set stores a value at the specified memory address
 func (m *Memory) Set(address int, value interface{}) error {
-	if !m.isValidAddress(address) {
+	addressInfo := m.getAddressInfo(address)
+	if !addressInfo.IsValid {
 		return fmt.Errorf("invalid memory address: %d - address outside valid ranges", address)
 	}
 
-	m.variableStorage[address] = value
-	return nil
+	switch v := value.(type) {
+	case int:
+		return m.setIntValue(addressInfo.ResourceType, addressInfo.Index, v)
+	case float64:
+		return m.setFloatValue(addressInfo.ResourceType, addressInfo.Index, v)
+	case bool:
+		return m.setBoolValue(addressInfo.ResourceType, addressInfo.Index, v)
+	default:
+		return fmt.Errorf("unsupported value type: %T", value)
+	}
 }
 
-// Get retrieves a value from the specified memory address.
-// Checks constants table first, then variable storage, returning default values if uninitialized.
-//
-// Parameters:
-//   - address: Virtual memory address to read from
-//
-// Returns:
-//   - interface{}: The value stored at the address, or default value if uninitialized
-//   - error: nil if successful, error if address is invalid
-//
-// Behavior:
-//   - First checks if address contains a constant value
-//   - Then checks variable storage for runtime values
-//   - Returns type-appropriate default value if address is uninitialized
-//   - Validates address ranges before any access
+// Helper methods for setting different types
+func (m *Memory) setIntValue(resourceType ResourceType, index int, value int) error {
+	if slice, exists := m.VariableStorage.slices[resourceType]; exists {
+		if intSlice, ok := slice.([]int); ok {
+			// Extend slice if necessary
+			for len(intSlice) <= index {
+				intSlice = append(intSlice, 0)
+			}
+			intSlice[index] = value
+			m.VariableStorage.slices[resourceType] = intSlice
+			return nil
+		}
+		return fmt.Errorf("resource type %s is not a float slice", resourceType)
+	}
+	return fmt.Errorf("resource type %s does not exist", resourceType)
+}
+
+func (m *Memory) setFloatValue(resourceType ResourceType, index int, value float64) error {
+	if slice, exists := m.VariableStorage.slices[resourceType]; exists {
+		if floatSlice, ok := slice.([]float64); ok {
+			// Extend slice if necessary
+			for len(floatSlice) <= index {
+				floatSlice = append(floatSlice, 0.0)
+			}
+			floatSlice[index] = value
+			m.VariableStorage.slices[resourceType] = floatSlice
+			return nil
+		}
+		return fmt.Errorf("resource type %s is not a float slice", resourceType)
+	}
+	return fmt.Errorf("resource type %s does not exist", resourceType)
+}
+
+func (m *Memory) setBoolValue(resourceType ResourceType, index int, value bool) error {
+	if slice, exists := m.VariableStorage.slices[resourceType]; exists {
+		if boolSlice, ok := slice.([]bool); ok {
+			// Extend slice if necessary
+			for len(boolSlice) <= index {
+				boolSlice = append(boolSlice, false)
+			}
+			boolSlice[index] = value
+			m.VariableStorage.slices[resourceType] = boolSlice
+			return nil
+		}
+		return fmt.Errorf("resource type %s is not a bool slice", resourceType)
+	}
+	return fmt.Errorf("resource type %s does not exist", resourceType)
+}
+
+// Get retrieves a value from the specified memory address
 func (m *Memory) Get(address int) (interface{}, error) {
-	if !m.isValidAddress(address) {
+	addressInfo := m.getAddressInfo(address)
+	if !addressInfo.IsValid {
 		return nil, fmt.Errorf("invalid memory address: %d - address outside valid ranges", address)
 	}
 
-	// Check constants table first (constants have priority)
-	constantValue, isConstant := m.getConstantValue(address)
-	if isConstant {
+	// Check constants table first
+	if constantValue, isConstant := m.getConstantValue(address); isConstant {
 		return constantValue, nil
 	}
 
-	// Check variable storage for runtime values
-	runtimeValue, exists := m.variableStorage[address]
-	if exists {
-		return runtimeValue, nil
-	}
-
-	// Return default value for uninitialized variables
-	return 0, nil
+	// Get value from variable storage
+	return m.getVariableValue(addressInfo)
 }
 
-// isValidAddress validates whether an address falls within any valid memory range.
-//
-// Parameters:
-//   - address: Virtual memory address to validate
-//
-// Returns:
-//   - bool: true if address is within valid ranges, false otherwise
-//
-// Validation Rules:
-//   - Address must be within global, local, temporal, or constant ranges
-//   - Uses memory configuration to determine valid bounds
-func (m *Memory) isValidAddress(address int) bool {
-	config := m.memoryConfig
-
-	// Check if address falls within any valid memory segment
-	return address >= config.GlobalIntStart && address <= config.ConstStringEnd
-}
-
-// getConstantValue retrieves and parses a constant value if it exists at the given address.
-//
-// Parameters:
-//   - address: Virtual memory address to check for constants
-//
-// Returns:
-//   - interface{}: The parsed constant value if found
-//   - bool: true if a constant was found at this address, false otherwise
-//
-// Behavior:
-//   - Searches constants table for matching virtual address
-//   - Parses string representation to appropriate type (int, float, string)
-//   - Returns nil, false if no constant found at address
-func (m *Memory) getConstantValue(address int) (interface{}, bool) {
-	for constantAddress, constantInfo := range m.constantsTable {
-		if constantAddress == address {
-			parsedValue, err := m.parseConstantByType(constantInfo.Value, constantInfo.DataType)
-			if err != nil {
-				// Log error but don't crash - return string value as fallback
-				fmt.Printf("Warning: Failed to parse constant at address %d: %v\n", address, err)
-				return constantInfo.Value, true
-			}
-			return parsedValue, true
+// getVariableValue retrieves a value from variable storage based on address info
+func (m *Memory) getVariableValue(addressInfo AddressInfo) (interface{}, error) {
+	switch addressInfo.ResourceType {
+	case GlobalInt, LocalInt, TempInt:
+		if slice := m.VariableStorage.GetInts(addressInfo.ResourceType); slice != nil && addressInfo.Index < len(slice) {
+			return slice[addressInfo.Index], nil
 		}
+		return 0, nil // Default value
+
+	case GlobalFloat, LocalFloat, TempFloat:
+		if slice := m.VariableStorage.GetFloats(addressInfo.ResourceType); slice != nil && addressInfo.Index < len(slice) {
+			return slice[addressInfo.Index], nil
+		}
+		return 0.0, nil // Default value
+
+	case TempBool:
+		if slice := m.VariableStorage.GetBools(addressInfo.ResourceType); slice != nil && addressInfo.Index < len(slice) {
+			return slice[addressInfo.Index], nil
+		}
+		return false, nil // Default value
+
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", addressInfo.ResourceType)
+	}
+}
+
+// isValidAddress validates whether an address falls within any valid memory range
+func (m *Memory) isValidAddress(address int) bool {
+	return m.getAddressInfo(address).IsValid
+}
+
+// getConstantValue retrieves and parses a constant value if it exists at the given address
+func (m *Memory) getConstantValue(address int) (interface{}, bool) {
+	if constantInfo, exists := m.constantsTable[address]; exists {
+		parsedValue, err := m.parseConstantByType(constantInfo.Value, constantInfo.DataType)
+		if err != nil {
+			fmt.Printf("Warning: Failed to parse constant at address %d: %v\n", address, err)
+			return constantInfo.Value, true
+		}
+		return parsedValue, true
 	}
 	return nil, false
 }
 
-// parseConstantByType converts a string constant to its appropriate runtime type.
-//
-// Parameters:
-//   - constantString: String representation of the constant value
-//   - dataType: Expected data type for the constant
-//
-// Returns:
-//   - interface{}: The parsed value in the correct type
-//   - error: nil if parsing successful, error if conversion fails
-//
-// Supported Types:
-//   - memory.Integer: Converts to int using strconv.Atoi
-//   - memory.Float: Converts to float64 using strconv.ParseFloat
-//   - Default: Returns original string value
+// parseConstantByType converts a string constant to its appropriate runtime type
 func (m *Memory) parseConstantByType(constantString string, dataType memory.DataType) (interface{}, error) {
 	switch dataType {
 	case memory.Integer:
@@ -173,7 +325,6 @@ func (m *Memory) parseConstantByType(constantString string, dataType memory.Data
 		return floatValue, nil
 
 	default:
-		// String literals and other types are returned as-is
 		return constantString, nil
 	}
 }
