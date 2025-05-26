@@ -12,7 +12,7 @@ import (
 // printSymbolTable displays the contents of the function directory,
 // showing all variables and their details for each scope.
 func printSymbolTable(directory *symbol.FunctionDirectory) {
-	for scope, variables := range directory.Directory {
+	for scope, variables := range directory.FunctionsDirectory {
 		fmt.Printf("Scope (Function Name): %s\n", scope)
 		for varName, varDetails := range variables {
 			fmt.Printf("Variable: %s, Details: %v\n", varName, varDetails)

@@ -8,9 +8,9 @@ import (
 // FunctionDirectory manages the symbol tables for different scopes in a program.
 // It provides functionality to create and manage scopes and their associated variable tables.
 type FunctionDirectory struct {
-	Directory    map[string]VariableTable // Maps scope names to their variable tables.
-	Constants    map[int]Constant         //Maps constants.
-	CurrentScope *stack.Stack             // Stack of active scopes, with the innermost scope at the end.
+	FunctionsDirectory map[string]VariableTable // Maps scope names to their variable tables.
+	Constants          map[int]Constant         //Maps constants.
+	CurrentScope       *stack.Stack             // Stack of active scopes, with the innermost scope at the end.
 }
 
 // NewFunctionDirectory creates and initializes a new function directory with a global "program" scope.
@@ -20,13 +20,13 @@ type FunctionDirectory struct {
 //	*FunctionDirectory: A pointer to the newly created function directory.
 func NewFunctionDirectory() *FunctionDirectory {
 	directory := &FunctionDirectory{
-		Directory:    make(map[string]VariableTable),
+		FunctionsDirectory:    make(map[string]VariableTable),
 		Constants:    make(map[int]Constant),
 		CurrentScope: stack.New(),
 	}
 
 	// Initialize the global "program" scope with an empty variable table.
-	directory.Directory["program"] = make(VariableTable)
+	directory.FunctionsDirectory["program"] = make(VariableTable)
 	directory.CurrentScope.Push("program")
 	return directory
 }
@@ -42,12 +42,12 @@ func NewFunctionDirectory() *FunctionDirectory {
 //	error: An error if a function with the same name already exists in the directory, otherwise nil.
 func (fd *FunctionDirectory) AddFunction(functionName string) error {
 	// Check if the function name already exists in the directory.
-	if _, exists := fd.Directory[functionName]; exists {
+	if _, exists := fd.FunctionsDirectory[functionName]; exists {
 		return fmt.Errorf("error: function '%s' already declared in current scope", functionName)
 	}
 
 	// Create a new variable table for the function scope.
-	fd.Directory[functionName] = make(VariableTable)
+	fd.FunctionsDirectory[functionName] = make(VariableTable)
 
 	return nil
 }

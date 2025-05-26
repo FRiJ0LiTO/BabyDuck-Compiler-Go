@@ -30,7 +30,7 @@ type VariableTable map[string]Variable
 func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType,
 	virtualAddress int, scope string) error {
 
-	varTable := fd.Directory[scope]
+	varTable := fd.FunctionsDirectory[scope]
 
 	// Check if the variable already exists in the current scope.
 	if _, exists := varTable[name]; exists {
@@ -79,7 +79,7 @@ func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string
 //   - int: Virtual address of the variable if found.
 //   - bool: A boolean indicating whether the variable was found in the specified scope.
 func (fd *FunctionDirectory) LookupVariable(scope string, name string) (Variable, bool) {
-	varTable, scopeExists := fd.Directory[scope]
+	varTable, scopeExists := fd.FunctionsDirectory[scope]
 	if !scopeExists {
 		return Variable{}, false
 	}
@@ -98,7 +98,7 @@ func (fd *FunctionDirectory) LookupVariable(scope string, name string) (Variable
 //   - Variable: The Variable struct if found.
 //   - bool: A boolean indicating whether a variable with the given virtual address was found.
 func (fd *FunctionDirectory) LookupVariableByVirtualAddress(targetAddress int, currentScope string) (Variable, bool) {
-	scopeVariables, isScopeValid := fd.Directory[currentScope]
+	scopeVariables, isScopeValid := fd.FunctionsDirectory[currentScope]
 	if !isScopeValid {
 		return Variable{}, false
 	}
