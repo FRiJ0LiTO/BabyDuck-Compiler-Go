@@ -62,8 +62,11 @@ func (d *DirectoryBuilder) ExitVarDecl(ctx *generated.VarDeclContext) {
 			d.Errors = append(d.Errors, err.Error())
 		}
 
+		// Get the current scope from the stack.
+		scope := d.Directory.CurrentScope.Peek().(string)
+
 		// Register Variable
-		err = d.Directory.AddVariable(variableName, memory.DataType(variableType), virtualAddress)
+		err = d.Directory.AddVariable(variableName, memory.DataType(variableType), virtualAddress, scope)
 		if err != nil {
 			// Variable already defined in current scope"
 			d.Errors = append(d.Errors, err.Error())
@@ -82,7 +85,8 @@ func (d *DirectoryBuilder) EnterParameter(ctx *generated.ParameterContext) {
 		d.Errors = append(d.Errors, err.Error())
 	}
 
-	err = d.Directory.AddVariable(paramName, memory.DataType(paramType), virtualAddress)
+	scope := d.Directory.CurrentScope.Peek().(string)
+	err = d.Directory.AddVariable(paramName, memory.DataType(paramType), virtualAddress, scope)
 	if err != nil {
 		// Parameter already defined in current function
 		d.Errors = append(d.Errors, err.Error())
@@ -136,7 +140,7 @@ func (d *DirectoryBuilder) ExitPrintStatement(ctx *generated.PrintStatementConte
 			if d.Debug {
 				fmt.Println("Found string literal:", printable.CONST_STRING().GetText())
 			}
-			continue
+			_ = d.registerConstantInMemory(printable.CONST_STRING().GetText(), "string")
 		}
 
 		if printable.Expression() != nil {
