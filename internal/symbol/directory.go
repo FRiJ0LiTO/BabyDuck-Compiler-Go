@@ -1,16 +1,23 @@
 package symbol
 
 import (
+	"BabyDuck/internal/memory"
 	"BabyDuck/structures/stack"
 	"fmt"
 )
 
+type FunctionInformation struct {
+	VariableTable VariableTable
+	Parameters    []memory.DataType
+	Resources     map[memory.DataType]int
+}
+
 // FunctionDirectory manages the symbol tables for different scopes in a program.
 // It provides functionality to create and manage scopes and their associated variable tables.
 type FunctionDirectory struct {
-	FunctionsDirectory map[string]VariableTable // Maps scope names to their variable tables.
-	Constants          map[int]Constant         //Maps constants.
-	CurrentScope       *stack.Stack             // Stack of active scopes, with the innermost scope at the end.
+	FunctionsDirectory map[string]*FunctionInformation // Maps scope names to their variable tables.
+	Constants          map[int]Constant                //Maps constants.
+	CurrentScope       *stack.Stack                    // Stack of active scopes, with the innermost scope at the end.
 }
 
 // NewFunctionDirectory creates and initializes a new function directory with a global "program" scope.
@@ -20,13 +27,17 @@ type FunctionDirectory struct {
 //	*FunctionDirectory: A pointer to the newly created function directory.
 func NewFunctionDirectory() *FunctionDirectory {
 	directory := &FunctionDirectory{
-		FunctionsDirectory:    make(map[string]VariableTable),
-		Constants:    make(map[int]Constant),
-		CurrentScope: stack.New(),
+		FunctionsDirectory: make(map[string]*FunctionInformation),
+		Constants:          make(map[int]Constant),
+		CurrentScope:       stack.New(),
 	}
 
 	// Initialize the global "program" scope with an empty variable table.
-	directory.FunctionsDirectory["program"] = make(VariableTable)
+	directory.FunctionsDirectory["program"] = &FunctionInformation{
+		VariableTable: make(VariableTable),
+		Parameters:    make([]memory.DataType, 0),
+		Resources:     make(map[memory.DataType]int),
+	}
 	directory.CurrentScope.Push("program")
 	return directory
 }
@@ -47,7 +58,19 @@ func (fd *FunctionDirectory) AddFunction(functionName string) error {
 	}
 
 	// Create a new variable table for the function scope.
-	fd.FunctionsDirectory[functionName] = make(VariableTable)
+	fd.FunctionsDirectory[functionName] = &FunctionInformation{
+		VariableTable: make(VariableTable),
+		Parameters:    make([]memory.DataType, 0),
+		Resources:     make(map[memory.DataType]int),
+	}
 
 	return nil
+}
+
+func (fd *FunctionDirectory) AddResource(functionName string, variableType memory.DataType, count int) {
+	if fd.FunctionsDirectory[functionName].Resources == nil {
+		fd.FunctionsDirectory[functionName].Resources = make(map[memory.DataType]int)
+	}
+	prevCounter := fd.FunctionsDirectory[functionName].Resources[variableType]
+	fd.FunctionsDirectory[functionName].Resources[variableType] = prevCounter + count
 }
