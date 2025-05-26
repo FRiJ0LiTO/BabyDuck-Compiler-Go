@@ -9,8 +9,8 @@ import (
 // It provides functionality to create and manage scopes and their associated variable tables.
 type FunctionDirectory struct {
 	Directory    map[string]VariableTable // Maps scope names to their variable tables.
-	Constants    map[string]Constant //Maps constants.
-	CurrentScope *stack.Stack // Stack of active scopes, with the innermost scope at the end.
+	Constants    map[int]Constant         //Maps constants.
+	CurrentScope *stack.Stack             // Stack of active scopes, with the innermost scope at the end.
 }
 
 // NewFunctionDirectory creates and initializes a new function directory with a global "program" scope.
@@ -21,7 +21,7 @@ type FunctionDirectory struct {
 func NewFunctionDirectory() *FunctionDirectory {
 	directory := &FunctionDirectory{
 		Directory:    make(map[string]VariableTable),
-		Constants:    make(map[string]Constant),
+		Constants:    make(map[int]Constant),
 		CurrentScope: stack.New(),
 	}
 
