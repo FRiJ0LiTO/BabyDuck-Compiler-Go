@@ -26,8 +26,8 @@ type Configuration struct {
 	ConstIntEnd      int
 	ConstFloatStart  int
 	ConstFloatEnd    int
-	ConstStringStart   int
-	ConstStringEnd     int
+	ConstStringStart int
+	ConstStringEnd   int
 }
 
 type Operator int
@@ -45,13 +45,13 @@ const (
 
 	GOTOF
 	GOTO
+	GOSUB
 
 	PRINT
 
-	FUNC
 	PARAM
 	ENDFUNC
-	CALL
+	ERA
 
 	ASSIGN
 
@@ -84,8 +84,8 @@ var DefaultMemoryConfig = Configuration{
 	ConstIntEnd:      10999,
 	ConstFloatStart:  11000,
 	ConstFloatEnd:    11999,
-	ConstStringStart:   12000,
-	ConstStringEnd:     12999,
+	ConstStringStart: 12000,
+	ConstStringEnd:   12999,
 }
 
 func IdentifyOperator(operator string) Operator {
@@ -110,16 +110,16 @@ func IdentifyOperator(operator string) Operator {
 		return GOTOF
 	case "GOTO":
 		return GOTO
+	case "GOSUB":
+		return GOSUB
 	case "PRINT":
 		return PRINT
-	case "FUNC":
-		return FUNC
 	case "PARAM":
 		return PARAM
 	case "ENDFUNC":
 		return ENDFUNC
-	case "CALL":
-		return CALL
+	case "ERA":
+		return ERA
 	case "=":
 		return ASSIGN
 	case "PROGRAM":
