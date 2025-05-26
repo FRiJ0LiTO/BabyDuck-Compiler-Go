@@ -52,30 +52,34 @@ func (d *DirectoryBuilder) ExitFunctionDeclaration(_ *generated.FunctionDeclarat
 // ExitVarDecl is called when exiting a variable declaration node in the parse tree.
 // It registers all variables declared in this statement with their associated type.
 func (d *DirectoryBuilder) ExitVarDecl(ctx *generated.VarDeclContext) {
-	variableType := memory.DataType(ctx.Type_().GetText())
-	ids := ctx.IdList().AllID()
+	dataType := memory.DataType(ctx.Type_().GetText())
+	identifiers := ctx.IdList().AllID()
 
-	for _, idNode := range ids {
-		variableName := idNode.GetText()
+	// Get the current scope from the stack
+	currentScope := d.Directory.CurrentScope.Peek().(string)
+	for _, identifier := range identifiers {
+		varName := identifier.GetText()
 
-		virtualAddress, err := d.allocateVirtualMemory(memory.DataType(variableType))
+		virtualAddress, err := d.allocateVirtualMemory(dataType)
 		if err != nil {
 			d.Errors = append(d.Errors, err.Error())
 		}
 
-		// Get the current scope from the stack.
-		scope := d.Directory.CurrentScope.Peek().(string)
-
 		// Register Variable
-		err = d.Directory.AddVariable(variableName, variableType, virtualAddress, scope)
+		err = d.Directory.AddVariable(varName, dataType, virtualAddress, currentScope)
 		if err != nil {
-			// Variable already defined in current scope"
+			// Variable already defined in current scope
 			d.Errors = append(d.Errors, err.Error())
 		}
 	}
 
-	functionName := d.Directory.CurrentScope.Peek().(string)
-	d.Directory.AddResource(functionName, variableType, len(ids))
+	// Determine scope prefix (Global/Local) for resource tracking
+	scopePrefix := "Local"
+	if currentScope == "program" {
+		scopePrefix = "Global"
+	}
+	resourceType := scopePrefix + string(dataType)
+	d.Directory.AddResource(currentScope, resourceType, len(identifiers))
 }
 
 // EnterParameter is called when entering a parameter declaration node in the parse tree.

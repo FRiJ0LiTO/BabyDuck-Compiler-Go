@@ -54,7 +54,7 @@ func NewVisitor(directory *symbol.FunctionDirectory, debug ...bool) *Visitor {
 //
 // Returns:
 //   - memory.DataType: The corresponding temporary type ("TempInt", "TempFloat", or "TempBool")
-func getTemporaryDataType(varType memory.DataType) memory.DataType {
+func getTemporaryDataType(varType memory.DataType) string {
 	switch varType {
 	case "int":
 		return "TempInt"
@@ -263,7 +263,8 @@ func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationCon
 		if context.Type_() != nil {
 			variableType := memory.DataType(context.Type_().GetText())
 			newParams = append(newParams, variableType)
-			v.Directory.AddResource(functionName, variableType, 1)
+			resourceType := "Local" + string(variableType)
+			v.Directory.AddResource(functionName, resourceType, 1)
 		}
 	}
 
