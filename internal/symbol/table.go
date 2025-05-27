@@ -89,24 +89,35 @@ func (fd *FunctionDirectory) LookupVariable(scope string, name string) (Variable
 }
 
 // LookupVariableByVirtualAddress searches for a variable by its virtual address in a specific scope.
-//
 // Parameters:
+//   - scopes ([]string): A list of scope names to search for the variable.
 //   - targetAddress (int): The virtual memory address to search for.
-//   - currentScope (string): The name of the scope to search in.
 //
 // Returns:
-//   - Variable: The Variable struct if found.
+//   - memory.DataType: The data type of the variable if found.
 //   - bool: A boolean indicating whether a variable with the given virtual address was found.
-func (fd *FunctionDirectory) LookupVariableByVirtualAddress(targetAddress int, currentScope string) (Variable, bool) {
-	function, isScopeValid := fd.FunctionsDirectory[currentScope]
-	if !isScopeValid {
-		return Variable{}, false
+func (fd *FunctionDirectory) LookupVariableByVirtualAddress(scopes []string, targetAddress int) (memory.DataType, bool) {
+
+	// Check if the target address exists in the constants table.
+	if constant, exists := fd.Constants[targetAddress]; exists {
+		return constant.DataType, true
 	}
 
-	for _, variableInfo := range function.VariableTable {
-		if variableInfo.VirtualDirection == targetAddress {
-			return variableInfo, true
+	// Iterate through the scopes in reverse order to search for the variable.
+	for i := len(scopes) - 1; i >= 0; i-- {
+		scope := scopes[i]
+
+		// Retrieve the variable table for the current scope.
+		variableTable, exists := fd.FunctionsDirectory[scope]
+		if exists != false {
+			// Iterate through the variables in the table to find a match by virtual address.
+			for _, variableInfo := range variableTable.VariableTable {
+				if variableInfo.VirtualDirection == targetAddress {
+					return variableInfo.VariableType, true
+				}
+			}
 		}
 	}
-	return Variable{}, false
+
+	return "bool", false
 }
