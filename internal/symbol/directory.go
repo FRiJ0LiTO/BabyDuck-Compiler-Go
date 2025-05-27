@@ -10,6 +10,7 @@ type FunctionInformation struct {
 	VariableTable VariableTable
 	Parameters    []memory.DataType
 	Resources     map[string]int
+	Position int
 }
 
 // FunctionDirectory manages the symbol tables for different scopes in a program.
