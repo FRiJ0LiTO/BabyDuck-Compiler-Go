@@ -135,8 +135,10 @@ func (d *DirectoryBuilder) ExitParenthesizedExpression(ctx *generated.Parenthesi
 // ExitFunctionCall is called when exiting a function call node in the parse tree.
 // It validates each argument expression in the function call.
 func (d *DirectoryBuilder) ExitFunctionCall(ctx *generated.FunctionCallContext) {
-	for _, context := range ctx.ArgumentList().AllExpression() {
-		d.validateExpression(context)
+	if ctx.ArgumentList() != nil {
+		for _, context := range ctx.ArgumentList().AllExpression() {
+			d.validateExpression(context)
+		}
 	}
 }
 

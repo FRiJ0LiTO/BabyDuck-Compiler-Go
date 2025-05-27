@@ -254,6 +254,7 @@ func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationCon
 	functionName := ctx.Identifier().GetText()
 	v.TempVariableCounter = 0
 	v.CurrentScope.Push(functionName)
+	v.Directory.FunctionsDirectory[functionName].Position = len(v.Quadruples)
 
 	// Generate function declaration quadruple
 	params := ctx.AllParameter()
@@ -437,6 +438,10 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 // VisitFunctionCall processes function calls in the code
 // Generates PARAM quadruples for arguments and a CALL quadruple
 func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interface{} {
+	if ctx.ArgumentList() == nil {
+		return nil
+	}
+
 	// Process all arguments
 	var argumentValues []any
 	for _, expression := range ctx.ArgumentList().AllExpression() {
