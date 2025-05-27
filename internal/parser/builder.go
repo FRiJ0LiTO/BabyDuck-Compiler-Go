@@ -5,6 +5,7 @@ import (
 	"BabyDuck/internal/memory"
 	"BabyDuck/internal/symbol"
 	"fmt"
+	"os"
 )
 
 // DirectoryBuilder traverses the AST to build a symbol table and validate semantic rules.
@@ -135,6 +136,14 @@ func (d *DirectoryBuilder) ExitParenthesizedExpression(ctx *generated.Parenthesi
 // ExitFunctionCall is called when exiting a function call node in the parse tree.
 // It validates each argument expression in the function call.
 func (d *DirectoryBuilder) ExitFunctionCall(ctx *generated.FunctionCallContext) {
+	functionName := ctx.Identifier().GetText()
+
+	exists := d.Directory.ExistsFunction(functionName)
+	if !exists {
+		fmt.Printf("error: undefined function '%s'\n", functionName)
+		os.Exit(1)
+	}
+
 	if ctx.ArgumentList() != nil {
 		for _, context := range ctx.ArgumentList().AllExpression() {
 			d.validateExpression(context)
