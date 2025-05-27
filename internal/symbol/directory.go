@@ -10,7 +10,7 @@ type FunctionInformation struct {
 	VariableTable VariableTable
 	Parameters    []memory.DataType
 	Resources     map[string]int
-	Position int
+	Position      int
 }
 
 // FunctionDirectory manages the symbol tables for different scopes in a program.
@@ -68,6 +68,29 @@ func (fd *FunctionDirectory) AddFunction(functionName string) error {
 	return nil
 }
 
+// HasFunction checks if a function with the given name exists in the function directory.
+//
+// Parameters:
+//   - functionName (string): The name of the function to check.
+//
+// Returns:
+//   - bool: True if the function exists in the directory, false otherwise.
+func (fd *FunctionDirectory) HasFunction(functionName string) bool {
+	_, exists := fd.FunctionsDirectory[functionName]
+	return exists
+}
+
+// AddResource adds or updates the resource count for a specific variable type in a given function.
+//
+// Parameters:
+//   - functionName (string): The name of the function whose resources are being updated.
+//   - variableType (string): The type of the variable for which the resource count is being added or updated.
+//   - count (int): The number of resources to add to the existing count.
+//
+// Behavior:
+//   - If the `Resources` map for the specified function is nil, it initializes the map.
+//   - Retrieves the current count for the specified variable type.
+//   - Updates the count by adding the provided `count` value to the existing count.
 func (fd *FunctionDirectory) AddResource(functionName string, variableType string, count int) {
 	if fd.FunctionsDirectory[functionName].Resources == nil {
 		fd.FunctionsDirectory[functionName].Resources = make(map[string]int)
