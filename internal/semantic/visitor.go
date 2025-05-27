@@ -437,27 +437,56 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 
 // VisitFunctionCall processes function calls in the code
 // Generates PARAM quadruples for arguments and a CALL quadruple
+// generateQuadruple creates a new quadruple and adds it to the quadruples list
+// A quadruple represents an intermediate code instruction with operator and operands
+// Parameters:
 func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interface{} {
-	if ctx.ArgumentList() == nil {
-		return nil
-	}
+	functionName := ctx.Identifier().GetText()
+	virtualAddressOpEra := memory.IdentifyOperator("ERA")
+	v.generateQuadruple(virtualAddressOpEra, functionName, 0, 0)
 
-	// Process all arguments
-	var argumentValues []any
-	for _, expression := range ctx.ArgumentList().AllExpression() {
-		argumentValues = append(argumentValues, v.Visit(expression))
-	}
+	expectedParams := len(v.Directory.FunctionsDirectory[functionName].Parameters)
 
-	// Generate parameter quadruples for each argument
-	for _, argValue := range argumentValues {
-		virtualAddressOpParam := memory.IdentifyOperator("PARAM")
-		v.generateQuadruple(virtualAddressOpParam, argValue, 0, 0)
+	if expectedParams > 0 {
+		if ctx.ArgumentList() == nil {
+			fmt.Printf("Error calling function '%s': expected %d parameters but got %d\n",
+				functionName, expectedParams, 0)
+			os.Exit(1)
+		}
+
+		// Process all arguments
+		var argumentValues []any
+		for _, expression := range ctx.ArgumentList().AllExpression() {
+			argumentValues = append(argumentValues, v.Visit(expression))
+		}
+
+		actualParams := len(argumentValues)
+		if actualParams != expectedParams {
+			fmt.Printf("Error calling function '%s': expected %d parameters but got %d\n",
+				functionName, expectedParams, actualParams)
+			os.Exit(1)
+		}
+
+		for i, value := range argumentValues {
+			variableType, _ := v.Directory.LookupVariableByVirtualAddress(v.CurrentScope.ToStringSlice(), value.(int))
+			parameterType := v.Directory.FunctionsDirectory[functionName].Parameters[i]
+			if variableType != parameterType {
+				fmt.Printf("Type mismatch in function '%s' call: parameter %d expected type '%s' but got '%s'\n",
+					functionName, i+1, parameterType, variableType)
+				os.Exit(1)
+			}
+		}
+
+		// Generate parameter quadruples for each argument
+		for _, argValue := range argumentValues {
+			virtualAddressOpParam := memory.IdentifyOperator("PARAM")
+			v.generateQuadruple(virtualAddressOpParam, argValue, 0, 0)
+		}
 	}
 
 	// Generate the function call quadruple
-	functionName := ctx.Identifier().GetText()
-	virtualAddressOp := memory.IdentifyOperator("CALL")
-	v.generateQuadruple(virtualAddressOp, functionName, argumentValues, 0)
+	virtualAddressOpGosub := memory.IdentifyOperator("GOSUB")
+	v.generateQuadruple(virtualAddressOpGosub, functionName, 0, 0)
 	return nil
 }
 
