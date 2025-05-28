@@ -386,7 +386,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) any {
 		v.generateQuadruple(virtualAddressOp, 0, 0, 0)
 
 		// Update the GOTOF to jump to the beginning of the else block
-		v.updateQuadruple(falseJumpPosition.(int), len(v.Quadruples)+1)
+		v.updateQuadruple(falseJumpPosition.(int), len(v.Quadruples))
 
 		// Process the code block within the else statement
 		v.Visit(ctx.ElseBlock().CodeBlock())
@@ -396,7 +396,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) any {
 	if ctx.SEMICOLON() != nil {
 		// Get the last jump position (either from if or else) and update it
 		lastJumpPosition := v.JumpsStack.Pop()
-		v.updateQuadruple(lastJumpPosition.(int), len(v.Quadruples)+1)
+		v.updateQuadruple(lastJumpPosition.(int), len(v.Quadruples))
 	}
 	return nil
 }
