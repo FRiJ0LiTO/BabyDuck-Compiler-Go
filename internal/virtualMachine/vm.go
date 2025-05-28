@@ -7,6 +7,8 @@ import (
 	"BabyDuck/structures/queue"
 	"BabyDuck/structures/stack"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // ExecutionContext represents the execution state for a function call.
@@ -36,7 +38,8 @@ type VirtualMachine struct {
 	quadruples         []semantic.Quadruple     // List of intermediate code instructions
 	executionStack     *stack.Stack             // Stack for function calls and scope management
 	parameterQueue     *queue.Queue             // Queue for function parameters
-	programCounter     int                      // Current instruction pointer
+	printable          []string
+	programCounter     int // Current instruction pointer
 }
 
 // NewVirtualMachine creates and initializes a new virtual machine instance.
@@ -60,6 +63,7 @@ func NewVirtualMachine(functionsDirectory symbol.FunctionDirectory, quadruples [
 		quadruples:         quadruples,
 		executionStack:     stack.New(),
 		parameterQueue:     queue.New(),
+		printable:          make([]string, 0),
 		programCounter:     0,
 	}
 
@@ -92,6 +96,9 @@ func (vm *VirtualMachine) Execute() {
 
 		case memory.PRINT:
 			vm.executePrint(currentInstruction)
+
+		case memory.ALLPRINT:
+			vm.flushPrintBuffer()
 
 		case memory.GOTOF:
 			shouldIncrementPC = vm.executeConditionalJump(currentInstruction)
@@ -459,8 +466,22 @@ func (vm *VirtualMachine) executePrint(instruction semantic.Quadruple) {
 	if err != nil {
 		panic(fmt.Sprintf("Error getting value to print: %v", err))
 	}
+	switch valueToPrint.(type) {
+	case int:
+		vm.printable = append(vm.printable, strconv.Itoa(valueToPrint.(int)))
+	case float64:
+		vm.printable = append(vm.printable, strconv.FormatFloat(valueToPrint.(float64), 'f', -1, 64))
+	default:
+		vm.printable = append(vm.printable, strings.ReplaceAll(valueToPrint.(string), `"`, ""))
+	}
+}
 
-	fmt.Printf("Output: %v\n", valueToPrint)
+// flushPrintBuffer outputs all accumulated printable values and clears the buffer.
+// This method joins all pending print values with spaces and outputs them as a single line,
+// then resets the buffer for future print operations.
+func (vm *VirtualMachine) flushPrintBuffer() {
+	fmt.Println(strings.Join(vm.printable, " "))
+	vm.printable = make([]string, 0)
 }
 
 // getCurrentMemoryValue gets a value from the appropriate memory (global or local).
