@@ -685,11 +685,10 @@ func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSig
 // VisitValue processes basic values (identifiers or constants)
 // Returns the identifier or constant value as a string
 func (v *Visitor) VisitValue(ctx *generated.ValueContext) any {
-	// TODO: Validate negative
 	if ctx.Identifier() != nil {
 		variableName := ctx.Identifier().GetText()
-		scope := v.CurrentScope.Peek().(string)
-		variableInfo, _ := v.Directory.LookupVariable(scope, variableName)
+		scopes := v.CurrentScope.ToStringSlice()
+		variableInfo, _ := v.Directory.ValidateVariableExists(scopes, variableName)
 		v.typesStack.Push(variableInfo.VariableType)
 		if len(v.debug) > 0 && v.debug[0] {
 			return variableName
