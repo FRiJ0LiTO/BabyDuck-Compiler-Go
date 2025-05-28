@@ -12,10 +12,10 @@ import (
 )
 
 type Quadruple struct {
-	Operator     interface{}
-	LeftOperand  interface{}
-	RightOperand interface{}
-	Result       interface{}
+	Operator     any
+	LeftOperand  any
+	RightOperand any
+	Result       any
 	Scope        string
 }
 
@@ -95,7 +95,7 @@ func (v *Visitor) newTemporaryVariable() any {
 //   - leftOperand: The first operand of the operation
 //   - rightOperand: The second operand of the operation (maybe empty)
 //   - result: The destination where the result will be stored
-func (v *Visitor) generateQuadruple(operator interface{}, leftOperand interface{}, rightOperand interface{}, result interface{}) {
+func (v *Visitor) generateQuadruple(operator any, leftOperand any, rightOperand any, result any) {
 	quadruple := Quadruple{
 		Operator:     operator,
 		LeftOperand:  leftOperand,
@@ -124,7 +124,7 @@ func (v *Visitor) PrintQuadruplesTable() {
 	fmt.Println("-------|----------|------------|------------|--------------------|----------")
 
 	for i, quad := range v.Quadruples {
-		formatOperand := func(operand interface{}) string {
+		formatOperand := func(operand any) string {
 			switch val := operand.(type) {
 			case int:
 				return fmt.Sprintf("%d", val)
@@ -151,7 +151,7 @@ func (v *Visitor) PrintQuadruplesTable() {
 
 // Visit is the main entry point for traversing the parse tree
 // It dispatches to the appropriate visitor method based on the node type
-func (v *Visitor) Visit(tree antlr.ParseTree) interface{} {
+func (v *Visitor) Visit(tree antlr.ParseTree) any {
 	switch node := tree.(type) {
 	case *generated.ProgramContext:
 		return v.VisitProgram(node)
@@ -205,7 +205,7 @@ func (v *Visitor) Visit(tree antlr.ParseTree) interface{} {
 
 // VisitProgram processes the top-level program structure
 // Generates PROGRAM and END quadruples and visits all program sections
-func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
+func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) any {
 	// Push program scope to the stack
 	v.CurrentScope.Push("program")
 	v.JumpsStack.Push(len(v.Quadruples))
@@ -239,7 +239,7 @@ func (v *Visitor) VisitProgram(ctx *generated.ProgramContext) interface{} {
 }
 
 // VisitProgramBody processes the main code block of the program
-func (v *Visitor) VisitProgramBody(ctx *generated.ProgramBodyContext) interface{} {
+func (v *Visitor) VisitProgramBody(ctx *generated.ProgramBodyContext) any {
 	if ctx.MAIN() != nil {
 		v.updateQuadruple(v.JumpsStack.Pop().(int), len(v.Quadruples))
 		return v.Visit(ctx.CodeBlock())
@@ -249,7 +249,7 @@ func (v *Visitor) VisitProgramBody(ctx *generated.ProgramBodyContext) interface{
 
 // VisitFunctionDeclaration processes function declarations
 // Creates a new scope and generates function-related quadruples
-func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationContext) interface{} {
+func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationContext) any {
 	// Get function name and push to scope stack
 	functionName := ctx.Identifier().GetText()
 	v.TempVariableCounter = 0
@@ -277,7 +277,7 @@ func (v *Visitor) VisitFunctionDeclaration(ctx *generated.FunctionDeclarationCon
 
 // VisitFunctionBody processes the code block within a function
 // Handles scope management and generates end function quadruple
-func (v *Visitor) VisitFunctionBody(ctx *generated.FunctionBodyContext) interface{} {
+func (v *Visitor) VisitFunctionBody(ctx *generated.FunctionBodyContext) any {
 	// Process function code block
 	v.Visit(ctx.CodeBlock())
 
@@ -299,7 +299,7 @@ func (v *Visitor) VisitFunctionBody(ctx *generated.FunctionBodyContext) interfac
 
 // VisitCodeBlock processes a block of statements
 // Visits each statement in the block sequentially
-func (v *Visitor) VisitCodeBlock(ctx *generated.CodeBlockContext) interface{} {
+func (v *Visitor) VisitCodeBlock(ctx *generated.CodeBlockContext) any {
 	// Process all statements in the code block
 	if ctx.AllStatement() != nil {
 		for _, statement := range ctx.AllStatement() {
@@ -311,7 +311,7 @@ func (v *Visitor) VisitCodeBlock(ctx *generated.CodeBlockContext) interface{} {
 
 // VisitStatement processes individual statements
 // Dispatches to the appropriate visitor method based on statement type
-func (v *Visitor) VisitStatement(ctx *generated.StatementContext) interface{} {
+func (v *Visitor) VisitStatement(ctx *generated.StatementContext) any {
 	if ctx.Assignment() != nil {
 		return v.Visit(ctx.Assignment())
 	} else if ctx.Conditional() != nil {
@@ -328,7 +328,7 @@ func (v *Visitor) VisitStatement(ctx *generated.StatementContext) interface{} {
 
 // VisitAssignment processes variable assignment statements
 // Generates assignment quadruple
-func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} {
+func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) any {
 	// Evaluate the expression on the right side
 	expressionResult := v.Visit(ctx.Expression())
 
@@ -359,7 +359,7 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) interface{} 
 
 // VisitConditional processes if-else conditional structures
 // Generates appropriate quadruples for conditional branching
-func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{} {
+func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) any {
 	// Process if block
 	if ctx.IfBlock() != nil {
 		// Evaluate the condition expression
@@ -403,7 +403,7 @@ func (v *Visitor) VisitConditional(ctx *generated.ConditionalContext) interface{
 
 // VisitLoop processes loop structures (currently supports while loops)
 // Handles the control flow for iterative execution
-func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
+func (v *Visitor) VisitLoop(ctx *generated.LoopContext) any {
 	if ctx.WHILE() != nil {
 		// Save the position to return to for loop condition evaluation
 		loopStartPosition := len(v.Quadruples)
@@ -440,7 +440,7 @@ func (v *Visitor) VisitLoop(ctx *generated.LoopContext) interface{} {
 // generateQuadruple creates a new quadruple and adds it to the quadruples list
 // A quadruple represents an intermediate code instruction with operator and operands
 // Parameters:
-func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interface{} {
+func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) any {
 	functionName := ctx.Identifier().GetText()
 	virtualAddressOpEra := memory.IdentifyOperator("ERA")
 	v.generateQuadruple(virtualAddressOpEra, functionName, 0, 0)
@@ -492,7 +492,7 @@ func (v *Visitor) VisitFunctionCall(ctx *generated.FunctionCallContext) interfac
 
 // VisitPrintStatement processes print statements
 // Generates PRINT quadruples for each printable item
-func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) interface{} {
+func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) any {
 	for i, printable := range ctx.AllPrintable() {
 		virtualAddressOpPrint := memory.IdentifyOperator("PRINT")
 		if printable.Expression() != nil {
@@ -511,7 +511,7 @@ func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) inte
 
 // VisitExpression processes expressions, including relational operations
 // Returns a reference to the result (variable or temporary)
-func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) interface{} {
+func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) any {
 	// Process the left-hand arithmetic expression
 	leftOperand := v.Visit(ctx.ArithmeticExpression())
 
@@ -546,7 +546,7 @@ func (v *Visitor) VisitExpression(ctx *generated.ExpressionContext) interface{} 
 
 // VisitRelationalOperator identifies and returns the string representation
 // of the relational operator
-func (v *Visitor) VisitRelationalOperator(ctx *generated.RelationalOperatorContext) interface{} {
+func (v *Visitor) VisitRelationalOperator(ctx *generated.RelationalOperatorContext) any {
 	if ctx.GREATER() != nil {
 		return ">"
 	}
@@ -561,7 +561,7 @@ func (v *Visitor) VisitRelationalOperator(ctx *generated.RelationalOperatorConte
 
 // VisitArithmeticExpression processes arithmetic expressions (terms connected by + or -)
 // Returns a reference to the result (variable or temporary)
-func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionContext) interface{} {
+func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionContext) any {
 	// Process the first term
 	result := v.Visit(ctx.Term(0))
 
@@ -594,7 +594,7 @@ func (v *Visitor) VisitArithmeticExpression(ctx *generated.ArithmeticExpressionC
 
 // VisitAdditiveOperator identifies and returns the string representation
 // of the additive operator (+ or -)
-func (v *Visitor) VisitAdditiveOperator(ctx *generated.AdditiveOperatorContext) interface{} {
+func (v *Visitor) VisitAdditiveOperator(ctx *generated.AdditiveOperatorContext) any {
 	if ctx.OP_ADD() != nil {
 		return "+"
 	}
@@ -606,7 +606,7 @@ func (v *Visitor) VisitAdditiveOperator(ctx *generated.AdditiveOperatorContext) 
 
 // VisitTerm processes terms (factors connected by * or /)
 // Returns a reference to the result (variable or temporary)
-func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
+func (v *Visitor) VisitTerm(ctx *generated.TermContext) any {
 	// Process the first factor
 	result := v.Visit(ctx.Factor(0))
 
@@ -639,7 +639,7 @@ func (v *Visitor) VisitTerm(ctx *generated.TermContext) interface{} {
 
 // VisitMultiplicativeOperator identifies and returns the string representation
 // of the multiplicative operator (* or /)
-func (v *Visitor) VisitMultiplicativeOperator(ctx *generated.MultiplicativeOperatorContext) interface{} {
+func (v *Visitor) VisitMultiplicativeOperator(ctx *generated.MultiplicativeOperatorContext) any {
 	if ctx.OP_MULTIPLY() != nil {
 		return "*"
 	}
@@ -651,7 +651,7 @@ func (v *Visitor) VisitMultiplicativeOperator(ctx *generated.MultiplicativeOpera
 
 // VisitFactor processes a factor (parenthesized expression or value)
 // Returns a reference to the result
-func (v *Visitor) VisitFactor(ctx *generated.FactorContext) interface{} {
+func (v *Visitor) VisitFactor(ctx *generated.FactorContext) any {
 	if ctx.ParenthesizedExpression() != nil {
 		return v.Visit(ctx.ParenthesizedExpression())
 	}
@@ -660,13 +660,13 @@ func (v *Visitor) VisitFactor(ctx *generated.FactorContext) interface{} {
 
 // VisitParenthesizedExpression processes expressions within parentheses
 // Returns a reference to the result
-func (v *Visitor) VisitParenthesizedExpression(ctx *generated.ParenthesizedExpressionContext) interface{} {
+func (v *Visitor) VisitParenthesizedExpression(ctx *generated.ParenthesizedExpressionContext) any {
 	return v.Visit(ctx.Expression())
 }
 
 // VisitValueWithOptionalSign processes values that may have a leading sign
 // Returns a reference to the result (variable or temporary)
-func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSignContext) interface{} {
+func (v *Visitor) VisitValueWithOptionalSign(ctx *generated.ValueWithOptionalSignContext) any {
 	// Process the base value
 	valueResult := v.Visit(ctx.Value())
 
