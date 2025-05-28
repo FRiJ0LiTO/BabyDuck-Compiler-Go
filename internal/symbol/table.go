@@ -8,11 +8,9 @@ import (
 // Variable represents a variable in the symbol table with its type and value.
 // Fields:
 //   - variableType (string): The data type of the variable.
-//   - VariableValue (interface{}): The value of the variable, which can be of any type.
 type Variable struct {
 	VariableType     memory.DataType
 	VirtualDirection int
-	VariableValue    interface{}
 }
 
 // VariableTable is a map of variable names to their corresponding Variable objects.
@@ -41,7 +39,6 @@ func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType,
 	varTable[name] = Variable{
 		VariableType:     dataType,
 		VirtualDirection: virtualAddress,
-		VariableValue:    nil,
 	}
 
 	return nil
