@@ -100,6 +100,7 @@ func (vm *VirtualMachine) handleProgramStart(instruction semantic.Quadruple) boo
 func (vm *VirtualMachine) handleProgramEnd() {
 	fmt.Println("✓ BabyDuck program executed successfully.")
 	fmt.Printf("  Instructions processed: %d\n", vm.programCounter+1)
+	vm.Memory.VariableStorage.slices = make(map[ResourceType]interface{})
 }
 
 // executeUnconditionalJump performs an unconditional jump to the specified address.
