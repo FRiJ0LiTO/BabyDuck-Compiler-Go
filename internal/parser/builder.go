@@ -138,7 +138,7 @@ func (d *DirectoryBuilder) ExitParenthesizedExpression(ctx *generated.Parenthesi
 func (d *DirectoryBuilder) ExitFunctionCall(ctx *generated.FunctionCallContext) {
 	functionName := ctx.Identifier().GetText()
 
-	exists := d.Directory.ExistsFunction(functionName)
+	exists := d.Directory.HasFunction(functionName)
 	if !exists {
 		fmt.Printf("error: undefined function '%s'\n", functionName)
 		os.Exit(1)
