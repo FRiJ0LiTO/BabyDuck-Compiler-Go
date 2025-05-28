@@ -506,6 +506,7 @@ func (v *Visitor) VisitPrintStatement(ctx *generated.PrintStatementContext) any 
 			v.generateQuadruple(virtualAddressOpPrint, 0, 0, virtualAddress)
 		}
 	}
+	v.generateQuadruple(memory.IdentifyOperator("ALLPRINT"), 0, 0, 0)
 	return nil
 }
 

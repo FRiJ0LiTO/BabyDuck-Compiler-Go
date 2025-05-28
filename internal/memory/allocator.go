@@ -48,6 +48,7 @@ const (
 	GOSUB
 
 	PRINT
+	ALLPRINT
 
 	PARAM
 	ENDFUNC
@@ -114,6 +115,7 @@ func IdentifyOperator(operator string) Operator {
 		return GOSUB
 	case "PRINT":
 		return PRINT
+	case "ALLPRINT": return ALLPRINT
 	case "PARAM":
 		return PARAM
 	case "ENDFUNC":
