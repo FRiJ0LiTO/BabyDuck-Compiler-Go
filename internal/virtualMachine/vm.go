@@ -6,6 +6,7 @@ import (
 	"BabyDuck/internal/symbol"
 	"BabyDuck/structures/stack"
 	"fmt"
+	"os"
 )
 
 // VirtualMachine represents the execution environment for BabyDuck programs.
@@ -216,8 +217,10 @@ func (vm *VirtualMachine) performIntArithmetic(left, right int, operator memory.
 			result := left / right
 			return result, nil
 		} else {
-			result := float64(left) / float64(right)
-			return result, nil
+			err := "type error: cannot assign value of type float to variable of type int"
+			fmt.Printf("Arithmetic operation failed: %v\n", err)
+			os.Exit(1)
+			return nil, nil
 		}
 	default:
 		return nil, fmt.Errorf("unsupported operator for integers: %v", operator)
