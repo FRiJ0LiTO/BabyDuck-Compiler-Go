@@ -22,13 +22,13 @@ const (
 
 // DynamicResources manages memory slices dynamically based on configuration
 type DynamicResources struct {
-	slices map[ResourceType]interface{}
+	slices map[ResourceType]any
 }
 
 // NewDynamicResources creates a new dynamic resources manager
 func NewDynamicResources(resources map[string]int) *DynamicResources {
 	dr := &DynamicResources{
-		slices: make(map[ResourceType]interface{}),
+		slices: make(map[ResourceType]any),
 	}
 
 	// Map memory.DataType to ResourceType and create slices dynamically
@@ -180,7 +180,7 @@ func (m *Memory) getAddressInfo(address int) AddressInfo {
 }
 
 // Set stores a value at the specified memory address
-func (m *Memory) Set(address int, value interface{}) error {
+func (m *Memory) Set(address int, value any) error {
 	addressInfo := m.getAddressInfo(address)
 	if !addressInfo.IsValid {
 		return fmt.Errorf("invalid memory address: %d - address outside valid ranges", address)
@@ -248,7 +248,7 @@ func (m *Memory) setBoolValue(resourceType ResourceType, index int, value bool) 
 }
 
 // Get retrieves a value from the specified memory address
-func (m *Memory) Get(address int) (interface{}, error) {
+func (m *Memory) Get(address int) (any, error) {
 	addressInfo := m.getAddressInfo(address)
 	if !addressInfo.IsValid {
 		return nil, fmt.Errorf("invalid memory address: %d - address outside valid ranges", address)
@@ -264,7 +264,7 @@ func (m *Memory) Get(address int) (interface{}, error) {
 }
 
 // getVariableValue retrieves a value from variable storage based on address info
-func (m *Memory) getVariableValue(addressInfo AddressInfo) (interface{}, error) {
+func (m *Memory) getVariableValue(addressInfo AddressInfo) (any, error) {
 	switch addressInfo.ResourceType {
 	case GlobalInt, LocalInt, TempInt:
 		if slice := m.VariableStorage.GetInts(addressInfo.ResourceType); slice != nil && addressInfo.Index < len(slice) {
@@ -295,7 +295,7 @@ func (m *Memory) isValidAddress(address int) bool {
 }
 
 // getConstantValue retrieves and parses a constant value if it exists at the given address
-func (m *Memory) getConstantValue(address int) (interface{}, bool) {
+func (m *Memory) getConstantValue(address int) (any, bool) {
 	if constantInfo, exists := m.constantsTable[address]; exists {
 		parsedValue, err := m.parseConstantByType(constantInfo.Value, constantInfo.DataType)
 		if err != nil {
@@ -308,7 +308,7 @@ func (m *Memory) getConstantValue(address int) (interface{}, bool) {
 }
 
 // parseConstantByType converts a string constant to its appropriate runtime type
-func (m *Memory) parseConstantByType(constantString string, dataType memory.DataType) (interface{}, error) {
+func (m *Memory) parseConstantByType(constantString string, dataType memory.DataType) (any, error) {
 	switch dataType {
 	case memory.Integer:
 		intValue, err := strconv.Atoi(constantString)
