@@ -115,7 +115,7 @@ func (d *DirectoryBuilder) ExitAssignment(ctx *generated.AssignmentContext) {
 	variableName := ctx.Identifier().GetText()
 
 	scopes := d.Directory.CurrentScope.ToStringSlice()
-	_, exists := d.Directory.ValidateVariableExists(scopes, variableName)
+	_, exists := d.Directory.FindVariable(scopes, variableName)
 	if !exists {
 		d.Errors = append(d.Errors, "error: undefined variable ", variableName)
 	}
@@ -248,7 +248,7 @@ func (d *DirectoryBuilder) validateVariable(value generated.IValueWithOptionalSi
 	variableName := value.Value().Identifier().GetText()
 
 	scopes := d.Directory.CurrentScope.ToStringSlice()
-	_, exists := d.Directory.ValidateVariableExists(scopes, variableName)
+	_, exists := d.Directory.FindVariable(scopes, variableName)
 	if !exists {
 		d.Errors = append(d.Errors, "error: undefined variable ", variableName)
 	}

@@ -339,7 +339,7 @@ func (v *Visitor) VisitAssignment(ctx *generated.AssignmentContext) any {
 		result = variableIdentifier
 	} else {
 		scopes := v.CurrentScope.ToStringSlice()
-		variable, _ := v.Directory.ValidateVariableExists(scopes, variableIdentifier)
+		variable, _ := v.Directory.FindVariable(scopes, variableIdentifier)
 		if variable.VariableType != v.typesStack.Peek() {
 			fmt.Printf("Type error: cannot assign value of type '%s' to variable '%s' of type '%s'\n",
 				v.typesStack.Peek(), variableIdentifier, variable.VariableType)
@@ -688,7 +688,7 @@ func (v *Visitor) VisitValue(ctx *generated.ValueContext) any {
 	if ctx.Identifier() != nil {
 		variableName := ctx.Identifier().GetText()
 		scopes := v.CurrentScope.ToStringSlice()
-		variableInfo, _ := v.Directory.ValidateVariableExists(scopes, variableName)
+		variableInfo, _ := v.Directory.FindVariable(scopes, variableName)
 		v.typesStack.Push(variableInfo.VariableType)
 		if len(v.debug) > 0 && v.debug[0] {
 			return variableName

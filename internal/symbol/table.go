@@ -44,25 +44,24 @@ func (fd *FunctionDirectory) AddVariable(name string, dataType memory.DataType,
 	return nil
 }
 
-// ValidateVariableExists checks if a variable exists in the current scope hierarchy.
+// FindVariable searches for a variable across multiple scopes and returns it if found.
 //
 // Parameters:
 //   - scopes ([]string): A list of scopes to search for the variable.
-//   - name (string): The name of the variable to validate.
+//   - name (string): The name of the variable to find.
 //
 // Returns:
-//   - error: An error if the variable is not found in any accessible scope.
-func (fd *FunctionDirectory) ValidateVariableExists(scopes []string, name string) (Variable, bool) {
-	for i := len(scopes) - 1; i >= 0; i-- {
-		scope := scopes[i]
-		variable, exists := fd.LookupVariable(scope, name)
-		if exists {
-			return variable, exists
-		}
-	}
-	return Variable{}, false
-
-	//return fmt.Errorf("error: undefined variable '%s'", name)
+//   - Variable: The found variable object or an empty Variable if not found.
+//   - bool: True if the variable was found, false otherwise.
+func (fd *FunctionDirectory) FindVariable(scopes []string, name string) (Variable, bool) {
+    for i := len(scopes) - 1; i >= 0; i-- {
+        scope := scopes[i]
+        variable, exists := fd.LookupVariable(scope, name)
+        if exists {
+            return variable, exists
+        }
+    }
+    return Variable{}, false
 }
 
 // LookupVariable searches for a variable in a specific scope.
