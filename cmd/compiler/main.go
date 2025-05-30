@@ -3,23 +3,10 @@ package main
 import (
 	"BabyDuck/internal/parser"
 	"BabyDuck/internal/semantic"
-	"BabyDuck/internal/symbol"
 	"BabyDuck/internal/virtualMachine"
 	"fmt"
 	"os"
 )
-
-// printSymbolTable displays the contents of the function directory,
-// showing all variables and their details for each scope.
-func printSymbolTable(directory *symbol.FunctionDirectory) {
-	for scope, variables := range directory.FunctionsDirectory {
-		fmt.Printf("Scope (Function Name): %s\n", scope)
-		for varName, varDetails := range variables {
-			fmt.Printf("Variable: %s, Details: %v\n", varName, varDetails)
-		}
-		fmt.Println()
-	}
-}
 
 func main() {
 	// Check if a source file was provided
