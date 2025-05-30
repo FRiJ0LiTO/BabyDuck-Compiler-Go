@@ -230,8 +230,7 @@ func (vm *VirtualMachine) executeERA(instruction semantic.Quadruple) {
 func (vm *VirtualMachine) executeParam(instruction semantic.Quadruple) {
 	parameterAddress := instruction.LeftOperand.(int)
 
-	// Get parameter value from global memory
-	parameterValue, err := vm.GlobalMemory.Get(parameterAddress)
+	parameterValue, err := vm.CurrentMemory.Get(parameterAddress)
 	if err != nil {
 		panic(fmt.Sprintf("Error getting parameter value: %v", err))
 	}
@@ -328,6 +327,7 @@ func (vm *VirtualMachine) copyParametersToLocalMemory(functionInfo *symbol.Funct
 			panic(fmt.Sprintf("Error setting parameter %d in local memory: %v", i, err))
 		}
 	}
+	vm.parameterQueue = queue.New()
 }
 
 // executeEndFunc handles function return (ENDFUNC instruction).
