@@ -20,7 +20,7 @@ void process(floatInput: float, intInput: int) [
 
 main
 {
-    print("Hola Mundo")
+    print("Hola Mundo");
     totalSum = 1 + 2 * 5 + 1.5 * 90 / 80;
     globalCounter = (1 + 2) / 3;
 
@@ -44,14 +44,13 @@ main
     loopIndex = -2 - -19;
     print(loopIndex < 34);
 
-    index = 0
+    index = 0;
     while (index < 10) do {
         print(index + 1);
         index = index + 1;
     };
 
     process(1.0 * 30, loopIndex);
-    processSec(1.0, 1);
 }
 
 end
