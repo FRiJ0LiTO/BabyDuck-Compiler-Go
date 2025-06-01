@@ -471,6 +471,8 @@ func (vm *VirtualMachine) executePrint(instruction semantic.Quadruple) {
 		vm.printable = append(vm.printable, strconv.Itoa(valueToPrint.(int)))
 	case float64:
 		vm.printable = append(vm.printable, strconv.FormatFloat(valueToPrint.(float64), 'f', -1, 64))
+	case bool:
+		vm.printable = append(vm.printable, strconv.FormatBool(valueToPrint.(bool)))
 	default:
 		vm.printable = append(vm.printable, strings.ReplaceAll(valueToPrint.(string), `"`, ""))
 	}
