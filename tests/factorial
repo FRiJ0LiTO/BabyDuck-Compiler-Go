@@ -1,19 +1,35 @@
-program CompilerV1;
+program Factorial;
 
-var n, factorial, i: int;
+var n, factorialResult: int;
+
+void factorial(n: int) [
+    var i, result: int;
+
+    {
+           if (n < 0) {
+               print("Error: Factorial not defined for negative numbers");
+               factorialResult = -1;
+           } else {
+               if (n < 2) {
+                   result = 1;
+               } else {
+                   result = 1;
+                   i = n;
+                   while (i > 1) do {
+                       result = result * i;
+                       i = i - 1;
+                   };
+               };
+               factorialResult = result;
+           };
+    }
+];
 
 main
 {
     n = 5;
-    factorial = 1;
-
-    i = n;
-    while (i > 1) do {
-        factorial = factorial * i;
-        i = i - 1;
-    };
-
-    print(factorial);
+    factorial(n);
+    print("Factorial Result:", factorialResult);
 }
 
 end

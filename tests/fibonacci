@@ -1,0 +1,19 @@
+program FibonacciSequence;
+
+var currentNumber, nextNumber, temporarySum: int;
+
+main
+{
+    currentNumber = 0;
+    nextNumber = 1;
+
+    while (currentNumber < 100) do {
+        print(currentNumber);
+        temporarySum = currentNumber + nextNumber;
+        currentNumber = nextNumber;
+        nextNumber = temporarySum;
+    };
+
+}
+
+end
