@@ -1,0 +1,52 @@
+program CompilerV1;
+
+void calculateFactorial(number: int) [
+    var result, counter : int;
+    {
+        result = 1;
+        counter = number;
+        print("Calculando factorial de", number);
+        while (counter > 1) do {
+            result = result * counter;
+            counter = counter - 1;
+        };
+        print("El factorial de", number, "es", result);
+    }
+];
+
+void generateFibonacciSeries(limit: int) [
+    var first, second, nextTerm : int;
+    {
+        first = 0;
+        second = 1;
+        print("Serie Fibonacci hasta", limit, ":");
+        print(first);
+        print(second);
+        while (second < limit) do {
+            nextTerm = first + second;
+            if (nextTerm < limit) {
+                print(nextTerm);
+            };
+            first = second;
+            second = nextTerm;
+        };
+    }
+];
+
+void executeFactorialAndFibonacci(n: int) [
+    {
+        print("Ejecutando funciones con n =", n);
+        calculateFactorial(n);
+        generateFibonacciSeries(n);
+    }
+];
+
+main
+{
+    print("=== INICIO DEL PROGRAMA DE FACTORIAL Y FIBONACCI ===");
+    executeFactorialAndFibonacci(5);
+    executeFactorialAndFibonacci(7);
+    generateFibonacciSeries(50);
+    print("=== FIN DEL PROGRAMA ===");
+}
+end
